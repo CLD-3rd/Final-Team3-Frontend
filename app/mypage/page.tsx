@@ -1,9 +1,12 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ChevronRight, User, Settings, FileText, Heart, List } from "lucide-react"
 import Link from "next/link"
+import { apiClient } from "@/lib/api-client"
+import type { User as UserType } from "@/types/api"
 
 const menuItems = [
   {
@@ -33,6 +36,60 @@ const menuItems = [
 ]
 
 export default function MyPage() {
+  const [user, setUser] = useState<UserType | null>(null)
+  const [stats, setStats] = useState({
+    participatedCount: 0,
+    myPostsCount: 0,
+    favoritesCount: 0,
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchUserData()
+  }, [])
+
+  const fetchUserData = async () => {
+    try {
+      setLoading(true)
+      const [profile, myPosts, favorites, applications] = await Promise.all([
+        apiClient.getProfile(),
+        apiClient.getMyPosts(),
+        apiClient.getFavorites(),
+        apiClient.getMyApplications(),
+      ])
+
+      setUser(profile)
+      setStats({
+        participatedCount: applications.length,
+        myPostsCount: myPosts.length,
+        favoritesCount: favorites.length,
+      })
+    } catch (error) {
+      console.error("Failed to fetch user data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    if (confirm("로그아웃 하시겠습니까?")) {
+      try {
+        await apiClient.logout()
+        window.location.href = "/login"
+      } catch (error) {
+        console.error("Logout error:", error)
+      }
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -41,8 +98,8 @@ export default function MyPage() {
           <div className="w-20 h-20 bg-white rounded-full mx-auto mb-4 flex items-center justify-center">
             <User className="w-10 h-10 text-blue-500" />
           </div>
-          <h2 className="text-xl font-bold mb-1">김운동님</h2>
-          <p className="text-sm opacity-90">kim@example.com</p>
+          <h2 className="text-xl font-bold mb-1">{user?.nickname || "사용자"}님</h2>
+          <p className="text-sm opacity-90">{user?.email}</p>
         </div>
       </div>
 
@@ -51,19 +108,19 @@ export default function MyPage() {
         <div className="grid grid-cols-3 gap-4 mb-6">
           <Card>
             <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-blue-500">12</p>
+              <p className="text-2xl font-bold text-blue-500">{stats.participatedCount}</p>
               <p className="text-sm text-gray-600">참여한 모임</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-green-500">3</p>
+              <p className="text-2xl font-bold text-green-500">{stats.myPostsCount}</p>
               <p className="text-sm text-gray-600">내 모집글</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-red-500">8</p>
+              <p className="text-2xl font-bold text-red-500">{stats.favoritesCount}</p>
               <p className="text-sm text-gray-600">찜한 모집글</p>
             </CardContent>
           </Card>
@@ -95,11 +152,13 @@ export default function MyPage() {
 
         {/* Logout Button */}
         <div className="mt-8">
-          <Link href="/login">
-            <Button variant="outline" className="w-full text-red-500 border-red-200 hover:bg-red-50 bg-transparent">
-              로그아웃
-            </Button>
-          </Link>
+          <Button
+            onClick={handleLogout}
+            variant="outline"
+            className="w-full text-red-500 border-red-200 hover:bg-red-50 bg-transparent"
+          >
+            로그아웃
+          </Button>
         </div>
       </div>
 

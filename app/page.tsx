@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -8,6 +8,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Search, MapPin, Clock, Users, Bell, User, Heart, Calendar, List, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import CalendarView from "@/components/calendar-view"
+import { apiClient } from "@/lib/api-client"
+import type { Post } from "@/types/api"
 
 const sports = [
   { id: "all", name: "전체", icon: "🏃" },
@@ -21,67 +23,71 @@ const sports = [
 const regions = ["서울", "경기", "대전", "대구", "부산", "광주", "인천", "울산"]
 const genders = ["전체", "남자", "여자"]
 
-const recruitmentPosts = [
-  {
-    id: 1,
-    sport: "축구",
-    title: "주말 축구 함께할 하실 분!",
-    location: "강남구 역삼동",
-    time: "7월 20일 오후 2시",
-    participants: "6/10명",
-    cost: "15,000원",
-    badge: "축구",
-    status: "모집중",
-  },
-  {
-    id: 2,
-    sport: "테니스",
-    title: "테니스 레슨 후 게임 하실 분",
-    location: "서초구 반포동",
-    time: "7월 21일 오전 10시",
-    participants: "3/4명",
-    cost: "25,000원",
-    badge: "테니스",
-    status: "모집중",
-  },
-  {
-    id: 3,
-    sport: "탁구",
-    title: "탁구 동호회 회원 모집",
-    location: "송파구 잠실동",
-    time: "7월 22일 오후 7시",
-    participants: "8/12명",
-    cost: "12,000원",
-    badge: "탁구",
-    status: "모집중",
-  },
-  {
-    id: 4,
-    sport: "농구",
-    title: "농구 3vs3 게임 하실 분",
-    location: "마포구 홍대입구",
-    time: "7월 19일 오후 8시",
-    participants: "5/6명",
-    cost: "무료",
-    badge: "농구",
-    status: "마감임박",
-  },
-]
-
 export default function MainPage() {
   const [sortBy, setSortBy] = useState("popular")
   const [selectedSport, setSelectedSport] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
-  const [viewMode, setViewMode] = useState("list") // "list" or "calendar"
+  const [viewMode, setViewMode] = useState("list")
   const [favorites, setFavorites] = useState<number[]>([])
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [selectedRegion, setSelectedRegion] = useState("내 지역")
   const [selectedGender, setSelectedGender] = useState("성별")
   const [showRegionDropdown, setShowRegionDropdown] = useState(false)
   const [showGenderDropdown, setShowGenderDropdown] = useState(false)
+  const [posts, setPosts] = useState<Post[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
 
-  const toggleFavorite = (postId: number) => {
-    setFavorites((prev) => (prev.includes(postId) ? prev.filter((id) => id !== postId) : [...prev, postId]))
+  useEffect(() => {
+    fetchPosts()
+    fetchFavorites()
+  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender])
+
+  const fetchPosts = async () => {
+    try {
+      setLoading(true)
+      setError("")
+      const params = {
+        sport: selectedSport !== "all" ? selectedSport : undefined,
+        sortBy,
+        search: searchQuery || undefined,
+        region: selectedRegion !== "내 지역" ? selectedRegion : undefined,
+        gender: selectedGender !== "성별" ? selectedGender : undefined,
+        date: selectedDate || undefined,
+      }
+      const data = await apiClient.getPosts(params)
+      setPosts(data || [])
+    } catch (error) {
+      console.error("Failed to fetch posts:", error)
+      setError("게시글을 불러오는데 실패했습니다.")
+      setPosts([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchFavorites = async () => {
+    try {
+      const data = await apiClient.getFavorites()
+      setFavorites(data?.map((fav: any) => fav.postId) || [])
+    } catch (error) {
+      console.error("Failed to fetch favorites:", error)
+      setFavorites([])
+    }
+  }
+
+  const toggleFavorite = async (postId: number) => {
+    try {
+      if (favorites.includes(postId)) {
+        await apiClient.removeFavorite(postId)
+        setFavorites((prev) => prev.filter((id) => id !== postId))
+      } else {
+        await apiClient.addFavorite(postId)
+        setFavorites((prev) => [...prev, postId])
+      }
+    } catch (error) {
+      console.error("Failed to toggle favorite:", error)
+    }
   }
 
   const handleDateSelect = (date: string) => {
@@ -99,12 +105,7 @@ export default function MainPage() {
     setShowGenderDropdown(false)
   }
 
-  const filteredPosts = selectedDate
-    ? recruitmentPosts.filter((post) => {
-        const postDate = "2024-07-20"
-        return postDate === selectedDate
-      })
-    : recruitmentPosts
+  const filteredPosts = selectedDate ? posts.filter((post) => post.date === selectedDate) : posts
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -127,7 +128,7 @@ export default function MainPage() {
 
         <div className="mb-4">
           <p className="text-sm opacity-90">안녕하세요!</p>
-          <p className="font-semibold">김운동님</p>
+          <p className="font-semibold">운동 메이트님</p>
         </div>
 
         {/* Search Bar */}
@@ -145,7 +146,6 @@ export default function MainPage() {
       <div className="p-4 pb-20">
         {/* Filter Buttons */}
         <div className="flex gap-2 mb-6 overflow-x-auto">
-          {/* Region Filter */}
           <div className="relative">
             <Button
               variant="default"
@@ -174,7 +174,6 @@ export default function MainPage() {
             )}
           </div>
 
-          {/* Gender Filter */}
           <div className="relative">
             <Button
               variant="outline"
@@ -226,7 +225,6 @@ export default function MainPage() {
           </Button>
         </div>
 
-        {/* Close dropdowns when clicking outside */}
         {(showRegionDropdown || showGenderDropdown) && (
           <div
             className="fixed inset-0 z-5"
@@ -286,100 +284,137 @@ export default function MainPage() {
                 >
                   가까운 순
                 </Button>
-                <Button variant="ghost" size="sm">
-                  필터 ▼
-                </Button>
               </div>
             </div>
 
+            {/* Error State */}
+            {error && (
+              <div className="text-center py-8">
+                <p className="text-red-500 mb-4">{error}</p>
+                <Button onClick={fetchPosts} className="bg-blue-500 hover:bg-blue-600">
+                  다시 시도
+                </Button>
+              </div>
+            )}
+
+            {/* Loading State */}
+            {loading && !error && (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                <p className="mt-2 text-gray-500">로딩 중...</p>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!loading && !error && filteredPosts.length === 0 && (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <Users className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-gray-500 mb-4">
+                  {selectedDate ? "해당 날짜에 모집글이 없습니다" : "조건에 맞는 모집글이 없습니다"}
+                </p>
+                <Link href="/create-post">
+                  <Button className="bg-blue-500 hover:bg-blue-600">새 모집글 작성하기</Button>
+                </Link>
+              </div>
+            )}
+
             {/* Recruitment Posts */}
-            <div className="space-y-4">
-              {filteredPosts.map((post) => (
-                <Card key={post.id} className="bg-white">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <Badge
-                        variant="secondary"
-                        className={`${
-                          post.sport === "축구"
-                            ? "bg-blue-100 text-blue-700"
-                            : post.sport === "테니스"
-                              ? "bg-green-100 text-green-700"
-                              : post.sport === "탁구"
-                                ? "bg-red-100 text-red-700"
-                                : "bg-orange-100 text-orange-700"
-                        }`}
-                      >
-                        {post.badge}
-                      </Badge>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => toggleFavorite(post.id)} className="p-1">
-                          <Heart
-                            className={`w-5 h-5 ${
-                              favorites.includes(post.id) ? "fill-red-500 text-red-500" : "text-gray-400"
-                            }`}
-                          />
-                        </button>
+            {!loading && !error && filteredPosts.length > 0 && (
+              <div className="space-y-4">
+                {filteredPosts.map((post) => (
+                  <Card key={post.id} className="bg-white">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-3">
                         <Badge
-                          variant={post.status === "모집중" ? "default" : "destructive"}
-                          className={post.status === "모집중" ? "bg-green-500" : "bg-red-500"}
+                          variant="secondary"
+                          className={`${
+                            post.sport === "축구"
+                              ? "bg-blue-100 text-blue-700"
+                              : post.sport === "테니스"
+                                ? "bg-green-100 text-green-700"
+                                : post.sport === "탁구"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-orange-100 text-orange-700"
+                          }`}
                         >
-                          {post.status}
+                          {post.sport}
                         </Badge>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => toggleFavorite(post.id)} className="p-1">
+                            <Heart
+                              className={`w-5 h-5 ${
+                                favorites.includes(post.id) ? "fill-red-500 text-red-500" : "text-gray-400"
+                              }`}
+                            />
+                          </button>
+                          <Badge
+                            variant={post.status === "모집중" ? "default" : "destructive"}
+                            className={post.status === "모집중" ? "bg-green-500" : "bg-red-500"}
+                          >
+                            {post.status}
+                          </Badge>
+                        </div>
                       </div>
-                    </div>
 
-                    <h4 className="font-semibold text-gray-900 mb-3">{post.title}</h4>
+                      <h4 className="font-semibold text-gray-900 mb-3">{post.title}</h4>
 
-                    <div className="space-y-2 text-sm text-gray-600 mb-4">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-red-500" />
-                        <span>{post.location}</span>
+                      <div className="space-y-2 text-sm text-gray-600 mb-4">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-red-500" />
+                          <span>{post.location}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-blue-500" />
+                          <span>
+                            {post.date} {post.time}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-green-500" />
+                          <span>
+                            {post.currentParticipants}/{post.maxParticipants}명
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-blue-500" />
-                        <span>{post.time}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-green-500" />
-                        <span>{post.participants}</span>
-                      </div>
-                    </div>
 
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="flex -space-x-2">
-                          <div className="w-6 h-6 bg-blue-500 rounded-full border-2 border-white flex items-center justify-center text-xs text-white">
-                            C
-                          </div>
-                          <div className="w-6 h-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center text-xs text-white">
-                            E
-                          </div>
-                          <div className="w-6 h-6 bg-purple-500 rounded-full border-2 border-white flex items-center justify-center text-xs text-white">
-                            C
-                          </div>
-                          <div className="w-6 h-6 bg-orange-500 rounded-full border-2 border-white flex items-center justify-center text-xs text-white">
-                            O
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="flex -space-x-2">
+                            {post.participants?.slice(0, 4).map((participant, idx) => (
+                              <div
+                                key={participant.id || idx}
+                                className="w-6 h-6 bg-blue-500 rounded-full border-2 border-white flex items-center justify-center text-xs text-white"
+                              >
+                                {participant.nickname?.charAt(0) || "?"}
+                              </div>
+                            ))}
+                            {post.currentParticipants > 4 && (
+                              <div className="w-6 h-6 bg-gray-500 rounded-full border-2 border-white flex items-center justify-center text-xs text-white">
+                                +{post.currentParticipants - 4}
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <span className="text-xs text-gray-500">+2명</span>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-red-500">{post.cost}원</p>
+                          <Link href={`/post/${post.id}`}>
+                            <Button size="sm" className="bg-cyan-500 hover:bg-cyan-600 text-white">
+                              상세보기
+                            </Button>
+                          </Link>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-red-500">{post.cost}</p>
-                        <Link href={`/post/${post.id}`}>
-                          <Button size="sm" className="bg-cyan-500 hover:bg-cyan-600 text-white">
-                            상세보기
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
+
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
         <div className="flex justify-around">

@@ -1,39 +1,49 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Plus, MapPin, Clock, Users, Edit, Trash2 } from "lucide-react"
 import Link from "next/link"
-
-const myPosts = [
-  {
-    id: 1,
-    sport: "축구",
-    title: "주말 축구 함께할 하실 분!",
-    location: "강남구 역삼동",
-    time: "7월 20일 오후 2시",
-    participants: "6/10명",
-    cost: "15,000원",
-    status: "모집중",
-  },
-  {
-    id: 2,
-    sport: "테니스",
-    title: "테니스 레슨 후 게임 하실 분",
-    location: "서초구 반포동",
-    time: "7월 21일 오전 10시",
-    participants: "4/4명",
-    cost: "25,000원",
-    status: "모집완료",
-  },
-]
+import { apiClient } from "@/lib/api-client"
+import type { Post } from "@/types/api"
 
 export default function MyPostsPage() {
-  const [activeTab, setActiveTab] = useState("active") // "active" or "completed"
+  const [activeTab, setActiveTab] = useState("active")
+  const [posts, setPosts] = useState<Post[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const filteredPosts = myPosts.filter((post) =>
+  useEffect(() => {
+    fetchMyPosts()
+  }, [])
+
+  const fetchMyPosts = async () => {
+    try {
+      setLoading(true)
+      const data = await apiClient.getMyPosts()
+      setPosts(data)
+    } catch (error) {
+      console.error("Failed to fetch my posts:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeletePost = async (id: number) => {
+    if (confirm("정말로 이 모집글을 삭제하시겠습니까?")) {
+      try {
+        await apiClient.deletePost(id)
+        setPosts((prev) => prev.filter((post) => post.id !== id))
+        alert("모집글이 삭제되었습니다.")
+      } catch (error) {
+        console.error("Failed to delete post:", error)
+        alert("삭제 중 오류가 발생했습니다.")
+      }
+    }
+  }
+
+  const filteredPosts = posts.filter((post) =>
     activeTab === "active" ? post.status === "모집중" : post.status === "모집완료",
   )
 
@@ -59,80 +69,97 @@ export default function MyPostsPage() {
             onClick={() => setActiveTab("active")}
             className={activeTab === "active" ? "bg-blue-500 text-white" : ""}
           >
-            모집중 ({myPosts.filter((p) => p.status === "모집중").length})
+            모집중 ({posts.filter((p) => p.status === "모집중").length})
           </Button>
           <Button
             variant={activeTab === "completed" ? "default" : "outline"}
             onClick={() => setActiveTab("completed")}
             className={activeTab === "completed" ? "bg-blue-500 text-white" : ""}
           >
-            모집완료 ({myPosts.filter((p) => p.status === "모집완료").length})
+            모집완료 ({posts.filter((p) => p.status === "모집완료").length})
           </Button>
         </div>
 
-        {/* Posts List */}
-        <div className="space-y-4">
-          {filteredPosts.map((post) => (
-            <Card key={post.id} className="bg-white">
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <Badge
-                    variant="secondary"
-                    className={`${post.sport === "축구" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}
-                  >
-                    {post.sport}
-                  </Badge>
-                  <div className="flex items-center gap-2">
-                    <Link href={`/edit-post/${post.id}`}>
-                      <Button variant="ghost" size="sm">
-                        <Edit className="w-4 h-4" />
+        {/* Loading State */}
+        {loading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="mt-2 text-gray-500">로딩 중...</p>
+          </div>
+        ) : (
+          /* Posts List */
+          <div className="space-y-4">
+            {filteredPosts.map((post) => (
+              <Card key={post.id} className="bg-white">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <Badge
+                      variant="secondary"
+                      className={`${post.sport === "축구" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}
+                    >
+                      {post.sport}
+                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/edit-post/${post.id}`}>
+                        <Button variant="ghost" size="sm">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500"
+                        onClick={() => handleDeletePost(post.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </Button>
-                    </Link>
-                    <Button variant="ghost" size="sm" className="text-red-500">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    </div>
                   </div>
-                </div>
 
-                <h4 className="font-semibold text-gray-900 mb-3">{post.title}</h4>
+                  <h4 className="font-semibold text-gray-900 mb-3">{post.title}</h4>
 
-                <div className="space-y-2 text-sm text-gray-600 mb-4">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-red-500" />
-                    <span>{post.location}</span>
+                  <div className="space-y-2 text-sm text-gray-600 mb-4">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-red-500" />
+                      <span>{post.location}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-blue-500" />
+                      <span>
+                        {post.date} {post.time}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-green-500" />
+                      <span>
+                        {post.currentParticipants}/{post.maxParticipants}명
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-blue-500" />
-                    <span>{post.time}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-green-500" />
-                    <span>{post.participants}</span>
-                  </div>
-                </div>
 
-                <div className="flex items-center justify-between">
-                  <Badge
-                    variant={post.status === "모집중" ? "default" : "secondary"}
-                    className={post.status === "모집중" ? "bg-green-500" : "bg-gray-500"}
-                  >
-                    {post.status}
-                  </Badge>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-red-500">{post.cost}</p>
-                    <Link href={`/post/${post.id}`}>
-                      <Button size="sm" variant="outline">
-                        상세보기
-                      </Button>
-                    </Link>
+                  <div className="flex items-center justify-between">
+                    <Badge
+                      variant={post.status === "모집중" ? "default" : "secondary"}
+                      className={post.status === "모집중" ? "bg-green-500" : "bg-gray-500"}
+                    >
+                      {post.status}
+                    </Badge>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-red-500">{post.cost}원</p>
+                      <Link href={`/post/${post.id}`}>
+                        <Button size="sm" variant="outline">
+                          상세보기
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
-        {filteredPosts.length === 0 && (
+        {!loading && filteredPosts.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500 mb-4">
               {activeTab === "active" ? "모집중인 글이 없습니다" : "모집완료된 글이 없습니다"}
