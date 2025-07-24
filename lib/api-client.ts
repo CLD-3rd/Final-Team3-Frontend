@@ -69,13 +69,22 @@ class ApiClient {
 
     return response
   }
-
+  /* 
   async signup(data: SignupData): Promise<ApiResponse<{ user: User; token: string }>> {
     return this.request<ApiResponse<{ user: User; token: string }>>("/user/signup", {
       method: "POST",
       body: JSON.stringify(data),
     })
+  }*/
+  async signup(data: SignupData): Promise<string> {
+    const res = await fetch(this.baseURL + "/user/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data), 
+    });
+    return await res.text(); // 응답만 plain text로 받음!
   }
+
 
   async logout(): Promise<void> {
     try {
@@ -92,7 +101,7 @@ class ApiClient {
 
   // Email duplicate check
   async checkEmailDuplicate(email: string): Promise<ApiResponse<{ available: boolean }>> {
-    return this.request<ApiResponse<{ available: boolean }>>("/auth/check-email", {
+    return this.request<ApiResponse<{ available: boolean }>>("/user/check-email", {
       method: "POST",
       body: JSON.stringify({ email }),
     })
@@ -100,11 +109,20 @@ class ApiClient {
 
   // Nickname duplicate check
   async checkNicknameDuplicate(nickname: string): Promise<ApiResponse<{ available: boolean }>> {
-    return this.request<ApiResponse<{ available: boolean }>>("/auth/check-nickname", {
+    return this.request<ApiResponse<{ available: boolean }>>("/user/check-nickname", {
       method: "POST",
       body: JSON.stringify({ nickname }),
     })
   }
+
+  // 카카오로 회원가입
+  async fetchKakaoConfig() {
+  const res = await fetch(this.baseURL + "/kakao-config");
+  if (!res.ok) throw new Error("카카오 설정값을 가져올 수 없습니다.");
+  return await res.json();
+}
+
+
 
   // Posts methods
   async getPosts(params?: {
