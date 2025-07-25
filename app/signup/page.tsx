@@ -114,14 +114,25 @@ export default function SignupPage() {
       setError("이메일을 입력해주세요.")
       return
     }
+    
     try {
-      await apiClient.checkEmailDuplicate(formData.email);
+    const response = await apiClient.checkEmailDuplicate(formData.email);
+
+    if (response.code === "USER202") {
       setEmailChecked(true); // 사용 가능
-    } catch (error) {
+      setError("");         
+    } else if (response.code === "USER400") {
       setEmailChecked(false); // 이미 사용 중
+      setError("");           
+    } else {
+      setEmailChecked(false);
+      setError(response.message || "이메일 중복 확인 중 오류가 발생했습니다.");
+    }
+    } catch (error) {
+      setEmailChecked(false);
+      setError("이메일 중복 확인 중 네트워크 오류가 발생했습니다.");
     }
   }
-
 
   const handleNicknameCheck = async () => {
   if (!formData.nickname) {
@@ -129,13 +140,23 @@ export default function SignupPage() {
     setNicknameChecked(null);
     return;
   }
+  
   try {
-    await apiClient.checkNicknameDuplicate(formData.nickname);
-    setNicknameChecked(true);
-    setNicknameError(""); // 성공 시 에러 초기화
+    const response = await apiClient.checkNicknameDuplicate(formData.nickname);
+
+    if (response.code === "USER203") {
+      setNicknameChecked(true);
+      setNicknameError(""); 
+    } else if (response.code === "USER401") {
+      setNicknameChecked(false);
+      setNicknameError("");
+    } else {
+      setNicknameChecked(false);
+      setNicknameError(response.message || "닉네임 중복 확인 중 오류가 발생했습니다.");
+    }
   } catch (error) {
     setNicknameChecked(false);
-    setNicknameError(""); // 실패 시 에러 초기화
+    setNicknameError("닉네임 중복 확인 중 네트워크 오류가 발생했습니다.");
   }
 };
 
@@ -151,10 +172,23 @@ export default function SignupPage() {
     e.preventDefault()
     setLoading(true)
     setError("")
+    setSuccess("")
 
     // Validation
     if (!emailChecked) {
       setError("이메일 중복확인을 해주세요.")
+      setLoading(false)
+      return
+    }
+
+    const isLengthValid = formData.password.length >= 8
+    const hasLetter = /[a-zA-Z]/.test(formData.password)
+    const hasNumber = /\d/.test(formData.password)
+    const hasSpecialChar = /[^a-zA-Z0-9]/.test(formData.password)
+    const isPasswordValid = isLengthValid && hasLetter && hasNumber && hasSpecialChar
+
+    if (!isPasswordValid) {
+      setError("비밀번호가 잘못된 형식입니다.")
       setLoading(false)
       return
     }
@@ -195,11 +229,11 @@ export default function SignupPage() {
         isKakaoUser: formData.isKakaoUser,
       })
       
-    if (typeof response === "string" && response.includes("회원가입이 완료되었습니다")) {
-      setSuccess(response); // 실제로 백엔드 메시지를 그대로 출력
-      //router.push("/login");  //
+    if (response.code === "USER200") {
+      setSuccess(response.message || "회원가입이 완료되었습니다!");
+      //router.push("/login");  
     } else {
-      setError("회원가입에 실패했습니다."); // 응답에 .message 필드는 없으니 직접 메시지 작성
+      setError("회원가입에 실패했습니다."); 
     }
     } catch (error) {
       setError("회원가입 중 오류가 발생했습니다.")
@@ -293,6 +327,20 @@ export default function SignupPage() {
                 className="pr-10"
                 required
               />
+              <ul className="text-sm mt-2 ml-1 space-y-1">
+                <li className={`flex items-center ${formData.password.length >= 8 ? "text-green-600" : "text-gray-500"}`}>
+                  {formData.password.length >= 8 ? "✓" : "○"}&nbsp;8자 이상
+                </li>
+                <li className={`flex items-center ${/[a-zA-Z]/.test(formData.password) ? "text-green-600" : "text-gray-500"}`}>
+                  {/^[\s\S]*[a-zA-Z]+[\s\S]*$/.test(formData.password) ? "✓" : "○"}&nbsp;영문 포함
+                </li>
+                <li className={`flex items-center ${/\d/.test(formData.password) ? "text-green-600" : "text-gray-500"}`}>
+                  {/\d/.test(formData.password) ? "✓" : "○"}&nbsp;숫자 포함
+                </li>
+                <li className={`flex items-center ${/[^a-zA-Z0-9]/.test(formData.password) ? "text-green-600" : "text-gray-500"}`}>
+                  {/[^a-zA-Z0-9]/.test(formData.password) ? "✓" : "○"}&nbsp;특수문자 포함
+                </li>
+              </ul>
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
