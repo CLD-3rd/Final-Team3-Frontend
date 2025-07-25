@@ -25,32 +25,25 @@ class ApiClient {
       },
       ...options,
     }
-
+    
+    const response = await fetch(url, config)
+    
+    let data: any = {};
     try {
-      const response = await fetch(url, config)
-
-      if (!response.ok) {
-        let errorMessage = `HTTP error! status: ${response.status}`
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.message || errorData.error || errorMessage
-        } catch {
-          // JSON 파싱 실패 시 기본 에러 메시지 사용
-        }
-        throw new Error(errorMessage)
-      }
-
-      const contentType = response.headers.get("content-type")
+      const contentType = response.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
-        return await response.json()
-      } else {
-        // JSON이 아닌 응답의 경우 빈 객체 반환
-        return {} as T
+        data = await response.json();
       }
-    } catch (error) {
-      console.error("API request failed:", error)
-      throw error
+    } catch {
+    // JSON 파싱 실패시 빈 객체로
+      data = {};
     }
+
+    return {
+      ...data,
+      status: response.status,
+      ok: response.ok,
+    } as T;
   }
 
   // Auth methods
@@ -60,13 +53,12 @@ class ApiClient {
       body: JSON.stringify(data),
     })
 
-    if (response.success && response.data?.token) {
+    if (response.code === "USER201" && response.data?.token) {
       this.token = response.data.token
       if (typeof window !== "undefined") {
         localStorage.setItem("auth_token", response.data.token)
       }
     }
-
     return response
   }
 
@@ -92,7 +84,7 @@ class ApiClient {
 
   // Email duplicate check
   async checkEmailDuplicate(email: string): Promise<ApiResponse<{ available: boolean }>> {
-    return this.request<ApiResponse<{ available: boolean }>>("/auth/check-email", {
+    return this.request<ApiResponse<{ available: boolean }>>("/user/check-email", {
       method: "POST",
       body: JSON.stringify({ email }),
     })
@@ -100,11 +92,18 @@ class ApiClient {
 
   // Nickname duplicate check
   async checkNicknameDuplicate(nickname: string): Promise<ApiResponse<{ available: boolean }>> {
-    return this.request<ApiResponse<{ available: boolean }>>("/auth/check-nickname", {
+    return this.request<ApiResponse<{ available: boolean }>>("/user/check-nickname", {
       method: "POST",
       body: JSON.stringify({ nickname }),
     })
   }
+
+  // 카카오로 회원가입, 로그인
+  async fetchKakaoConfig() {
+  const res = await fetch(this.baseURL + "/kakao-config");
+  if (!res.ok) throw new Error("카카오 설정값을 가져올 수 없습니다.");
+  return await res.json();
+}
 
   // Posts methods
   async getPosts(params?: {

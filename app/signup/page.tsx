@@ -11,6 +11,9 @@ import { Eye, EyeOff } from 'lucide-react'
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
+import { useEffect } from "react";
+import { useSearchParams } from "next/navigation"
+
 
 const sports = [
   { id: "FOOTBALL", name: "축구", icon: "⚽" },
@@ -59,7 +62,42 @@ export default function SignupPage() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [emailChecked, setEmailChecked] = useState(false)
+  const [success, setSuccess] = useState("");
+  const [emailChecked, setEmailChecked] = useState<null | boolean>(null);
+  const [nicknameChecked, setNicknameChecked] = useState<null | boolean>(null);
+  const [nicknameError, setNicknameError] = useState("");
+  const [kakaoConfig, setKakaoConfig] = useState<any>(null);
+
+  useEffect(() => {
+  // 컴포넌트 마운트 시 카카오 설정값 받아오기
+  fetch("http://localhost:8080/api/kakao-config")
+    .then((res) => res.json())
+    .then(setKakaoConfig)
+    .catch(() => setKakaoConfig(null));
+  }, []);
+
+  const searchParams = useSearchParams();
+  const kakaoEmail = searchParams.get("kakaoEmail");
+
+  useEffect(() => {
+    if (kakaoEmail) {
+      setFormData((prev) => ({
+        ...prev,
+        email: kakaoEmail,
+        isKakaoUser: true,
+      }));
+    }
+  }, [kakaoEmail]);
+
+  const handleKakaoSignup = () => {
+    if (!kakaoConfig) {
+      alert("카카오 인증 정보를 불러오지 못했습니다.");
+      return;
+  }
+    const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${kakaoConfig.clientId}&redirect_uri=${encodeURIComponent(kakaoConfig.signupRedirectUri)}&response_type=code`;
+    console.log("카카오 인증 URL:", kakaoAuthUrl);
+    window.location.href = kakaoAuthUrl;
+  };
 
   const handleSportToggle = (sportId: string) => {
     setFormData((prev) => ({
@@ -76,18 +114,51 @@ export default function SignupPage() {
       setError("이메일을 입력해주세요.")
       return
     }
-
+    
     try {
-      // API 호출로 이메일 중복 확인
-      // const response = await apiClient.checkEmailDuplicate(formData.email)
-      // 임시로 성공 처리
-      setEmailChecked(true)
-      alert("사용 가능한 이메일입니다.")
+    const response = await apiClient.checkEmailDuplicate(formData.email);
+
+    if (response.code === "USER202") {
+      setEmailChecked(true); // 사용 가능
+      setError("");         
+    } else if (response.code === "USER400") {
+      setEmailChecked(false); // 이미 사용 중
+      setError("");           
+    } else {
+      setEmailChecked(false);
+      setError(response.message || "이메일 중복 확인 중 오류가 발생했습니다.");
+    }
     } catch (error) {
-      setError("이미 사용 중인 이메일입니다.")
-      setEmailChecked(false)
+      setEmailChecked(false);
+      setError("이메일 중복 확인 중 네트워크 오류가 발생했습니다.");
     }
   }
+
+  const handleNicknameCheck = async () => {
+  if (!formData.nickname) {
+    setNicknameError("닉네임을 입력해주세요.");
+    setNicknameChecked(null);
+    return;
+  }
+  
+  try {
+    const response = await apiClient.checkNicknameDuplicate(formData.nickname);
+
+    if (response.code === "USER203") {
+      setNicknameChecked(true);
+      setNicknameError(""); 
+    } else if (response.code === "USER401") {
+      setNicknameChecked(false);
+      setNicknameError("");
+    } else {
+      setNicknameChecked(false);
+      setNicknameError(response.message || "닉네임 중복 확인 중 오류가 발생했습니다.");
+    }
+  } catch (error) {
+    setNicknameChecked(false);
+    setNicknameError("닉네임 중복 확인 중 네트워크 오류가 발생했습니다.");
+  }
+};
 
   const handleSidoChange = (value: string) => {
     setFormData((prev) => ({
@@ -101,10 +172,23 @@ export default function SignupPage() {
     e.preventDefault()
     setLoading(true)
     setError("")
+    setSuccess("")
 
     // Validation
     if (!emailChecked) {
       setError("이메일 중복확인을 해주세요.")
+      setLoading(false)
+      return
+    }
+
+    const isLengthValid = formData.password.length >= 8
+    const hasLetter = /[a-zA-Z]/.test(formData.password)
+    const hasNumber = /\d/.test(formData.password)
+    const hasSpecialChar = /[^a-zA-Z0-9]/.test(formData.password)
+    const isPasswordValid = isLengthValid && hasLetter && hasNumber && hasSpecialChar
+
+    if (!isPasswordValid) {
+      setError("비밀번호가 잘못된 형식입니다.")
       setLoading(false)
       return
     }
@@ -144,13 +228,13 @@ export default function SignupPage() {
         sports: formData.sports,
         isKakaoUser: formData.isKakaoUser,
       })
-
-      if (response.success) {
-        alert("회원가입이 완료되었습니다!")
-        router.push("/login")
-      } else {
-        setError(response.message || "회원가입에 실패했습니다.")
-      }
+      
+    if (response.code === "USER200") {
+      setSuccess(response.message || "회원가입이 완료되었습니다!");
+      //router.push("/login");  
+    } else {
+      setError("회원가입에 실패했습니다."); 
+    }
     } catch (error) {
       setError("회원가입 중 오류가 발생했습니다.")
       console.error("Signup error:", error)
@@ -168,11 +252,18 @@ export default function SignupPage() {
           <p className="text-gray-600">운동 메이트와 함께 건강한 라이프스타일을 시작하세요</p>
         </div>
 
+        {/* Success message */}
+        {success && (<div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">{success}</div>)}
+
         {/* Error Message */}
         {error && <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
 
         {/* Kakao Signup */}
-        <Button className="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold mb-6 py-3">
+        <Button
+          type="button"
+          onClick={handleKakaoSignup}
+          className="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold mb-6 py-3 rounded"
+        >
           <span className="mr-2">💬</span>
           카카오로 시작하기
         </Button>
@@ -197,7 +288,7 @@ export default function SignupPage() {
                 value={formData.email}
                 onChange={(e) => {
                   setFormData((prev) => ({ ...prev, email: e.target.value }))
-                  setEmailChecked(false) // 이메일이 변경되면 중복확인 초기화
+                  setEmailChecked(null) // 이메일이 변경되면 중복확인 초기화
                 }}
                 className="flex-1"
                 required
@@ -212,12 +303,16 @@ export default function SignupPage() {
                 중복확인
               </Button>
             </div>
-            {emailChecked && (
+            {emailChecked == true && (
               <p className="text-sm text-green-600 mt-1">✓ 사용 가능한 이메일입니다.</p>
             )}
+            {emailChecked == false && (
+              <p className="text-sm text-red-600 mt-1">이미 사용 중인 이메일입니다.</p>
+            )}
           </div>
-
-          {/* Password */}
+        
+        {/* Password */}
+        {!formData.isKakaoUser && (  
           <div>
             <Label htmlFor="password" className="text-gray-700 font-medium">
               비밀번호 <span className="text-red-500">*</span>
@@ -232,6 +327,20 @@ export default function SignupPage() {
                 className="pr-10"
                 required
               />
+              <ul className="text-sm mt-2 ml-1 space-y-1">
+                <li className={`flex items-center ${formData.password.length >= 8 ? "text-green-600" : "text-gray-500"}`}>
+                  {formData.password.length >= 8 ? "✓" : "○"}&nbsp;8자 이상
+                </li>
+                <li className={`flex items-center ${/[a-zA-Z]/.test(formData.password) ? "text-green-600" : "text-gray-500"}`}>
+                  {/^[\s\S]*[a-zA-Z]+[\s\S]*$/.test(formData.password) ? "✓" : "○"}&nbsp;영문 포함
+                </li>
+                <li className={`flex items-center ${/\d/.test(formData.password) ? "text-green-600" : "text-gray-500"}`}>
+                  {/\d/.test(formData.password) ? "✓" : "○"}&nbsp;숫자 포함
+                </li>
+                <li className={`flex items-center ${/[^a-zA-Z0-9]/.test(formData.password) ? "text-green-600" : "text-gray-500"}`}>
+                  {/[^a-zA-Z0-9]/.test(formData.password) ? "✓" : "○"}&nbsp;특수문자 포함
+                </li>
+              </ul>
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
@@ -241,8 +350,9 @@ export default function SignupPage() {
               </button>
             </div>
           </div>
-
+        )}
           {/* Confirm Password */}
+        {!formData.isKakaoUser && (
           <div>
             <Label htmlFor="confirmPassword" className="text-gray-700 font-medium">
               비밀번호 확인 <span className="text-red-500">*</span>
@@ -266,7 +376,7 @@ export default function SignupPage() {
               </button>
             </div>
           </div>
-
+        )}
           {/* Nickname */}
           <div>
             <Label htmlFor="nickname" className="text-gray-700 font-medium">
@@ -277,14 +387,27 @@ export default function SignupPage() {
                 id="nickname"
                 placeholder="2-10자의 한글, 영문, 숫자"
                 value={formData.nickname}
-                onChange={(e) => setFormData((prev) => ({ ...prev, nickname: e.target.value }))}
+                onChange={(e) => {
+                  setFormData((prev) => ({ ...prev, nickname: e.target.value }));
+                  setNicknameChecked(null);
+                  setNicknameError("");
+                }}
                 className="flex-1"
                 required
               />
-              <Button type="button" variant="outline" size="sm" className="bg-blue-500 text-white border-blue-500 px-4">
+              <Button type="button" variant="outline" size="sm" className="bg-blue-500 text-white border-blue-500 px-4" onClick={handleNicknameCheck}>
                 중복확인
               </Button>
             </div>
+            {nicknameChecked === true && (
+              <p className="text-sm text-green-600 mt-1">✓ 사용 가능한 닉네임입니다.</p>
+            )}
+            {nicknameChecked === false && (
+              <p className="text-sm text-red-600 mt-1">이미 사용 중인 닉네임입니다.</p>
+            )}
+            {nicknameError && (
+              <p className="text-sm text-red-600 mt-1">{nicknameError}</p>
+            )}
           </div>
 
           {/* Age */}
@@ -379,16 +502,16 @@ export default function SignupPage() {
 
           {/* Preferred Sports */}
           <div>
-            <Label className="text-gray-700 font-medium mb-3 block">선호 종목 (복수 선택 가능)</Label>
+            <Label className="text-gray-700 font-medium mb-3 block">선호 종목</Label>
             <div className="grid grid-cols-3 gap-3">
               {sports.map((sport) => (
                 <Button
                   key={sport.id}
                   type="button"
-                  variant={formData.sports.includes(sport.id) ? "default" : "outline"}
+                  variant={formData.sports === sport.id ? "default" : "outline"}
                   onClick={() => handleSportToggle(sport.id)}
                   className={`h-16 flex flex-col items-center justify-center gap-1 ${
-                    formData.sports.includes(sport.id)
+                    formData.sports === sport.id
                       ? "bg-blue-500 text-white"
                       : "border-gray-200 text-gray-700"
                   }`}
