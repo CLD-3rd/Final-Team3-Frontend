@@ -11,10 +11,15 @@ import { Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
+import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams();
+  const kakaoToken = searchParams.get("kakaoToken");
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberEmail, setRememberEmail] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -34,9 +39,14 @@ export default function LoginPage() {
         password: formData.password,
       })
 
-      if (response.success) {
+      if (response.data?.token && response.code === "USER201") {
         router.push("/")
-      } else {
+      } else if (response.code === "USER404") {
+        setError(response.message || "존재하지 않는 사용자입니다.")
+      } else if (response.code === "USER405") {
+        setError(response.message || "유효하지 않은 비밀번호입니다.")
+      }
+      else {
         setError(response.message || "로그인에 실패했습니다.")
       }
     } catch (error) {
@@ -46,10 +56,37 @@ export default function LoginPage() {
       setLoading(false)
     }
   }
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("rememberedEmail");
+    if (savedEmail) {
+      setFormData((prev) => ({ ...prev, email: savedEmail }));
+      setRememberEmail(true);
+    }
+  }, []);
 
+
+  useEffect(() => {
+    if (kakaoToken) {
+      // 1. 토큰 저장
+      localStorage.setItem("auth_token", kakaoToken);
+      // 2. 메인페이지로 이동
+      router.push("/");
+    }
+  }, [kakaoToken, router]);
+  
   const handleKakaoLogin = async () => {
-    // 카카오 로그인 구현
-    window.location.href = `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/kakao`
+    try {
+      // 백엔드에서 카카오 앱 clientId, loginRedirectUri 값 받아오기
+      const config = await apiClient.fetchKakaoConfig();
+
+      // 카카오 로그인용 redirect_uri 사용
+      const kakaoLoginUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(config.loginRedirectUri)}&response_type=code`;
+
+      // 카카오 로그인 페이지로 이동
+      window.location.href = kakaoLoginUrl;
+    } catch (err) {
+      alert("카카오 로그인 정보를 불러올 수 없습니다.");
+    }
   }
 
   return (
@@ -139,15 +176,24 @@ export default function LoginPage() {
                 <Checkbox
                   id="keep-logged-in"
                   checked={formData.keepLoggedIn}
-                  onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, keepLoggedIn: !!checked }))}
+                  onCheckedChange={(checked) => {
+                    const keep = !!checked;
+                    setFormData((prev) => ({ ...prev, keepLoggedIn: keep }));
+
+                    if (keep) {
+                      // 체크되면 이메일 저장
+                    localStorage.setItem("rememberedEmail", formData.email);
+                    } else {
+                      // 체크 해제 시 이메일 삭제 + 입력창 초기화
+                      localStorage.removeItem("rememberedEmail");
+                      setFormData((prev) => ({ ...prev, email: "" }));
+                    }
+                  }}
                 />
                 <Label htmlFor="keep-logged-in" className="text-sm text-gray-600">
                   로그인 상태 유지
                 </Label>
               </div>
-              <Link href="/forgot-password" className="text-sm text-blue-500 hover:underline">
-                비밀번호 찾기
-              </Link>
             </div>
 
             {/* Login Button */}
@@ -161,15 +207,6 @@ export default function LoginPage() {
           </form>
 
           {/* Footer Links */}
-          <div className="flex justify-center gap-4 mt-6 text-sm">
-            <Link href="/find-id" className="text-blue-500 hover:underline">
-              아이디 찾기
-            </Link>
-            <span className="text-gray-300">|</span>
-            <Link href="/forgot-password" className="text-blue-500 hover:underline">
-              비밀번호 찾기
-            </Link>
-          </div>
 
           <div className="text-center mt-6">
             <span className="text-gray-600">아직 계정이 없으신가요? </span>

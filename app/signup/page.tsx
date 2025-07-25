@@ -117,14 +117,25 @@ export default function SignupPage() {
       setError("이메일을 입력해주세요.")
       return
     }
+
     try {
-      await apiClient.checkEmailDuplicate(formData.email);
+    const response = await apiClient.checkEmailDuplicate(formData.email);
+
+    if (response.code === "USER202") {
       setEmailChecked(true); // 사용 가능
-    } catch (error) {
+      setError("");         
+    } else if (response.code === "USER400") {
       setEmailChecked(false); // 이미 사용 중
+      setError("");           
+    } else {
+      setEmailChecked(false);
+      setError(response.message || "이메일 중복 확인 중 오류가 발생했습니다.");
+    }
+    } catch (error) {
+      setEmailChecked(false);
+      setError("이메일 중복 확인 중 네트워크 오류가 발생했습니다.");
     }
   }
-
 
   const handleNicknameCheck = async () => {
   if (!formData.nickname) {
@@ -132,15 +143,29 @@ export default function SignupPage() {
     setNicknameChecked(null);
     return;
   }
+  
   try {
-    await apiClient.checkNicknameDuplicate(formData.nickname);
-    setNicknameChecked(true);
-    setNicknameError(""); // 성공 시 에러 초기화
+    const response = await apiClient.checkNicknameDuplicate(formData.nickname);
+
+    if (response.code === "USER203") {
+      setNicknameChecked(true);
+      setNicknameError(""); 
+    } else if (response.code === "USER401") {
+      setNicknameChecked(false);
+      setNicknameError("");
+    } else {
+      setNicknameChecked(false);
+      setNicknameError(response.message || "닉네임 중복 확인 중 오류가 발생했습니다.");
+    }
   } catch (error) {
     setNicknameChecked(false);
-    setNicknameError(""); // 실패 시 에러 초기화
+    setNicknameError("닉네임 중복 확인 중 네트워크 오류가 발생했습니다.");
   }
 };
+
+
+
+
 
   const handleSidoChange = (value: string) => {
     setFormData((prev) => ({
