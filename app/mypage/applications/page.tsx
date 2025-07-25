@@ -99,7 +99,7 @@ export default function ApplicationsPage() {
         location: item.location,
         time: formatDateTime(item.date),
         participants: `${item.currentPeople}/${item.maxPeople}명`,
-        cost: item.cost === 0 ? "무료" : `${item.cost.toLocaleString()}원`,
+        cost: !item.cost || item.cost === 0 ? "무료" : `${Number(item.cost).toLocaleString()}원`,
         status: getStatusInKorean(item.status),
         appliedDate: new Date().toISOString().split('T')[0],
       }))
