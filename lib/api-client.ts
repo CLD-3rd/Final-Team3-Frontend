@@ -61,13 +61,14 @@ class ApiClient {
     }
     return response
   }
-
+  
   async signup(data: SignupData): Promise<ApiResponse<{ user: User; token: string }>> {
     return this.request<ApiResponse<{ user: User; token: string }>>("/user/signup", {
       method: "POST",
       body: JSON.stringify(data),
     })
   }
+
 
   async logout(): Promise<void> {
     try {
@@ -124,10 +125,10 @@ class ApiClient {
       }
 
       const queryString = searchParams.toString()
-      const endpoint = `/posts${queryString ? `?${queryString}` : ""}`
+      const endpoint = `/posts/list${queryString ? `?${queryString}` : ""}`
 
-      const response = await this.request<ApiResponse<Post[]>>(endpoint)
-      return response.data || []
+      const response = await this.request<ApiResponse<{ posts: Post[] }>>(endpoint)
+      return response.data?.posts || []
     } catch (error) {
       console.error("Failed to fetch posts:", error)
       return []
