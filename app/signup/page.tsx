@@ -117,7 +117,7 @@ export default function SignupPage() {
       setError("이메일을 입력해주세요.")
       return
     }
-
+    
     try {
     const response = await apiClient.checkEmailDuplicate(formData.email);
 
@@ -163,10 +163,6 @@ export default function SignupPage() {
   }
 };
 
-
-
-
-
   const handleSidoChange = (value: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -179,10 +175,23 @@ export default function SignupPage() {
     e.preventDefault()
     setLoading(true)
     setError("")
+    setSuccess("")
 
     // Validation
     if (!emailChecked) {
       setError("이메일 중복확인을 해주세요.")
+      setLoading(false)
+      return
+    }
+
+    const isLengthValid = formData.password.length >= 8
+    const hasLetter = /[a-zA-Z]/.test(formData.password)
+    const hasNumber = /\d/.test(formData.password)
+    const hasSpecialChar = /[^a-zA-Z0-9]/.test(formData.password)
+    const isPasswordValid = isLengthValid && hasLetter && hasNumber && hasSpecialChar
+
+    if (!isPasswordValid) {
+      setError("비밀번호가 잘못된 형식입니다.")
       setLoading(false)
       return
     }
@@ -322,6 +331,20 @@ export default function SignupPage() {
                 className="pr-10"
                 required
               />
+              <ul className="text-sm mt-2 ml-1 space-y-1">
+                <li className={`flex items-center ${formData.password.length >= 8 ? "text-green-600" : "text-gray-500"}`}>
+                  {formData.password.length >= 8 ? "✓" : "○"}&nbsp;8자 이상
+                </li>
+                <li className={`flex items-center ${/[a-zA-Z]/.test(formData.password) ? "text-green-600" : "text-gray-500"}`}>
+                  {/^[\s\S]*[a-zA-Z]+[\s\S]*$/.test(formData.password) ? "✓" : "○"}&nbsp;영문 포함
+                </li>
+                <li className={`flex items-center ${/\d/.test(formData.password) ? "text-green-600" : "text-gray-500"}`}>
+                  {/\d/.test(formData.password) ? "✓" : "○"}&nbsp;숫자 포함
+                </li>
+                <li className={`flex items-center ${/[^a-zA-Z0-9]/.test(formData.password) ? "text-green-600" : "text-gray-500"}`}>
+                  {/[^a-zA-Z0-9]/.test(formData.password) ? "✓" : "○"}&nbsp;특수문자 포함
+                </li>
+              </ul>
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}

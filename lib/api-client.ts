@@ -53,13 +53,12 @@ class ApiClient {
       body: JSON.stringify(data),
     })
 
-    if (response.success && response.data?.token) {
+    if (response.code === "USER201" && response.data?.token) {
       this.token = response.data.token
       if (typeof window !== "undefined") {
         localStorage.setItem("auth_token", response.data.token)
       }
     }
-
     return response
   }
   
@@ -100,7 +99,7 @@ class ApiClient {
     })
   }
 
-  // 카카오로 회원가입
+  // 카카오로 회원가입, 로그인
   async fetchKakaoConfig() {
   const res = await fetch(this.baseURL + "/kakao-config");
   if (!res.ok) throw new Error("카카오 설정값을 가져올 수 없습니다.");
