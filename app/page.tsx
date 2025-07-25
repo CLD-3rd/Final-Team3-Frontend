@@ -12,12 +12,12 @@ import { apiClient } from "@/lib/api-client"
 import type { Post } from "@/types/api"
 
 const sports = [
-  { id: "all", name: "전체", icon: "🏃" },
-  { id: "soccer", name: "축구", icon: "⚽" },
-  { id: "tennis", name: "테니스", icon: "🎾" },
-  { id: "pingpong", name: "탁구", icon: "🏓" },
-  { id: "basketball", name: "농구", icon: "🏀" },
-  { id: "badminton", name: "배드민턴", icon: "🏸" },
+  { id: "ALL", name: "전체", icon: "🏃" },
+  { id: "SOCCER", name: "축구", icon: "⚽" },
+  { id: "TENNIS", name: "테니스", icon: "🎾" },
+  { id: "TABLE_TENNIS", name: "탁구", icon: "🏓" },
+  { id: "BASKETBALL", name: "농구", icon: "🏀" },
+  { id: "BADMINTON", name: "배드민턴", icon: "🏸" },
 ]
 
 const regions = ["서울", "경기", "대전", "대구", "부산", "광주", "인천", "울산"]
@@ -38,6 +38,12 @@ export default function MainPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
+
+  const [nickname, setNickname] = useState(null);
+  
+
+
+
   useEffect(() => {
     fetchPosts()
     fetchFavorites()
@@ -55,8 +61,8 @@ export default function MainPage() {
         gender: selectedGender !== "성별" ? selectedGender : undefined,
         date: selectedDate || undefined,
       }
-      const data = await apiClient.getPosts(params)
-      setPosts(data || [])
+      const posts = await apiClient.getPosts(params);  // posts만 받아옴!
+      setPosts(posts);
     } catch (error) {
       console.error("Failed to fetch posts:", error)
       setError("게시글을 불러오는데 실패했습니다.")
@@ -128,7 +134,9 @@ export default function MainPage() {
 
         <div className="mb-4">
           <p className="text-sm opacity-90">안녕하세요!</p>
-          <p className="font-semibold">운동 메이트님</p>
+          <p className="font-semibold">
+            {nickname ? `${nickname}님` : "운동 메이트님"}
+          </p>
         </div>
 
         {/* Search Bar */}
@@ -441,3 +449,4 @@ export default function MainPage() {
     </div>
   )
 }
+

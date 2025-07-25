@@ -109,6 +109,9 @@ export default function SignupPage() {
     }))
   }
 
+  const passwordsMatch = formData.confirmPassword.length > 0 && formData.password === formData.confirmPassword;
+
+
   const handleEmailCheck = async () => {
     if (!formData.email) {
       setError("이메일을 입력해주세요.")
@@ -195,9 +198,10 @@ export default function SignupPage() {
         isKakaoUser: formData.isKakaoUser,
       })
       
-    if (typeof response === "string" && response.includes("회원가입이 완료되었습니다")) {
-      setSuccess(response); // 실제로 백엔드 메시지를 그대로 출력
-      //router.push("/login");  //
+
+    if (response.code === "USER200") {
+      setSuccess(response.message || "회원가입이 완료되었습니다!");
+      router.push("/login");  
     } else {
       setError("회원가입에 실패했습니다."); // 응답에 .message 필드는 없으니 직접 메시지 작성
     }
@@ -327,6 +331,11 @@ export default function SignupPage() {
                 {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            {formData.confirmPassword.length > 0 && (
+              <p className={`mt-2 text-sm ${passwordsMatch ? "text-green-500" : "text-red-500"}`}>
+                {passwordsMatch ? "비밀번호가 일치합니다." : "비밀번호가 일치하지 않습니다."}
+              </p>
+            )}
           </div>
         )}
           {/* Nickname */}

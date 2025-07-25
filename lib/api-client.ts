@@ -69,20 +69,12 @@ class ApiClient {
 
     return response
   }
-  /* 
+  
   async signup(data: SignupData): Promise<ApiResponse<{ user: User; token: string }>> {
     return this.request<ApiResponse<{ user: User; token: string }>>("/user/signup", {
       method: "POST",
       body: JSON.stringify(data),
     })
-  }*/
-  async signup(data: SignupData): Promise<string> {
-    const res = await fetch(this.baseURL + "/user/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data), 
-    });
-    return await res.text(); // 응답만 plain text로 받음!
   }
 
 
@@ -143,10 +135,10 @@ class ApiClient {
       }
 
       const queryString = searchParams.toString()
-      const endpoint = `/posts${queryString ? `?${queryString}` : ""}`
+      const endpoint = `/posts/list${queryString ? `?${queryString}` : ""}`
 
-      const response = await this.request<ApiResponse<Post[]>>(endpoint)
-      return response.data || []
+      const response = await this.request<ApiResponse<{ posts: Post[] }>>(endpoint)
+      return response.data?.posts || []
     } catch (error) {
       console.error("Failed to fetch posts:", error)
       return []
