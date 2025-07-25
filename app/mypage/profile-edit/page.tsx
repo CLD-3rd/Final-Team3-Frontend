@@ -333,7 +333,7 @@ export default function ProfileEditPage() {
           </div>
 
           <div>
-            <Label className="text-gray-700 font-medium mb-3 block">선호 종목 * (하나만 선택 가능)</Label>
+            <Label className="text-gray-700 font-medium mb-3 block">선호 종목</Label>
             <div className="grid grid-cols-3 gap-3">
               {sports.map((sport) => (
                 <Button
