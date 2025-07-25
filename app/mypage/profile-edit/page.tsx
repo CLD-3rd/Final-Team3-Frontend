@@ -41,7 +41,7 @@ export default function ProfileEditPage() {
     message: ""
   })
 
-  const getAuthToken = () => localStorage.getItem("jwt") || localStorage.getItem("accessToken")
+  const getAuthToken = () => localStorage.getItem("auth_token") || localStorage.getItem("accessToken")
 
   const makeAuthenticatedRequest = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken()
@@ -73,8 +73,8 @@ export default function ProfileEditPage() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const jwt = getAuthToken()
-        if (!jwt) {
+        const auth_token = getAuthToken()
+        if (!auth_token) {
           router.push('/login')
           return
         }
