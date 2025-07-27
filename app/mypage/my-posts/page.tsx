@@ -1,93 +1,332 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, MapPin, Clock, Users, ChevronDown, ChevronUp } from "lucide-react"
+import { ArrowLeft, Clock, Users, ChevronDown, ChevronUp } from "lucide-react"
 import Link from "next/link"
+import dynamic from "next/dynamic"
 
-const myPostsWithApplicants = [
-  {
-    id: 1,
-    sport: "축구",
-    title: "주말 축구 함께할 하실 분!",
-    location: "강남구 역삼동",
-    time: "7월 20일 오후 2시",
-    participants: "6/10명",
-    cost: "15,000원",
-    status: "모집중",
-    applicants: [
-      {
-        id: 1,
-        nickname: "축구왕",
-        gender: "남성",
-        age: 28,
-        recruitCount: 5,
-        applicationCount: 12,
-        status: "승인대기",
-      },
-      {
-        id: 2,
-        nickname: "운동러버",
-        gender: "여성",
-        age: 25,
-        recruitCount: 2,
-        applicationCount: 8,
-        status: "승인대기",
-      },
-      {
-        id: 3,
-        nickname: "스포츠맨",
-        gender: "남성",
-        age: 32,
-        recruitCount: 8,
-        applicationCount: 15,
-        status: "승인완료",
-      },
-    ],
-  },
-  {
-    id: 2,
-    sport: "테니스",
-    title: "테니스 레슨 후 게임 하실 분",
-    location: "서초구 반포동",
-    time: "7월 21일 오전 10시",
-    participants: "4/4명",
-    cost: "25,000원",
-    status: "모집완료",
-    applicants: [
-      {
-        id: 4,
-        nickname: "테니스프로",
-        gender: "남성",
-        age: 30,
-        recruitCount: 3,
-        applicationCount: 6,
-        status: "승인완료",
-      },
-    ],
-  },
-]
+interface MyPost {
+  postId?: number
+  title: string
+  date: string
+  currentPeople: number
+  maxPeople: number
+  status: "OPEN" | "CLOSED"
+}
 
-export default function MyPostsManagePage() {
+interface Applicant {
+  userId: number
+  nickname: string
+  gender: string
+  age: number
+  status: "PENDING" | "APPROVED" | "REJECTED"
+}
+
+interface ApiResponse<T> {
+  code: string
+  message: string
+  data: T
+}
+
+interface MyPostsResponse {
+  posts: MyPost[]
+}
+
+function MyPostsContentComponent() {
+  const [myPosts, setMyPosts] = useState<MyPost[]>([])
+  const [applicantsMap, setApplicantsMap] = useState<Record<number, Applicant[]>>({})
   const [expandedPosts, setExpandedPosts] = useState<number[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const toggleExpanded = (postId: number) => {
-    setExpandedPosts((prev) => (prev.includes(postId) ? prev.filter((id) => id !== postId) : [...prev, postId]))
+  const getAuthToken = () => {
+    return localStorage.getItem("auth_token") || localStorage.getItem("accessToken")
   }
 
-  const handleApprove = (postId: number, applicantId: number) => {
-    alert(`신청자를 승인했습니다.`)
+  const makeAuthenticatedRequest = async (url: string, options?: RequestInit) => {
+    const token = getAuthToken()
+    if (!token) throw new Error("인증 토큰이 없습니다. 다시 로그인해주세요.")
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+      })
+
+      if (response.status === 403) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        const retryResponse = await fetch(url, {
+          ...options,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            ...options?.headers,
+          },
+        })
+        
+        return retryResponse
+      }
+
+      return response
+    } catch (error) {
+      throw new Error("서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.")
+    }
   }
 
-  const handleReject = (postId: number, applicantId: number) => {
-    alert(`신청자를 거절했습니다.`)
+  const fetchMyPosts = async (): Promise<MyPost[]> => {
+    const response = await makeAuthenticatedRequest("http://localhost:8080/api/posts/mine")
+    if (!response.ok) {
+      throw new Error(`서버 오류: ${response.status}`)
+    }
+    const result: ApiResponse<MyPostsResponse> = await response.json()
+    
+    if (!result.data || !Array.isArray(result.data.posts)) {
+      return []
+    }
+    
+    const postsWithId = result.data.posts.map((post, index) => ({
+      ...post,
+      postId: post.postId || (index + 1)
+    }))
+    
+    return postsWithId
+  }
+
+  const fetchApplicants = async (postId: number): Promise<Applicant[]> => {
+    try {
+      const response = await makeAuthenticatedRequest(`http://localhost:8080/api/posts/${postId}/applicants`)
+      
+      if (response.status === 403) {
+        return []
+      }
+      
+      if (!response.ok) {
+        throw new Error(`서버 오류: ${response.status} - ${response.statusText}`)
+      }
+      
+      const result: ApiResponse<{ applicants: Applicant[] }> = await response.json()
+      return result.data.applicants || []
+    } catch (error) {
+      return []
+    }
+  }
+
+  const manageApplicant = async (postId: number, applicantId: number, decision: 'ACCEPT' | 'REJECT') => {
+    try {
+      const response = await makeAuthenticatedRequest(`http://localhost:8080/api/posts/${postId}/apply`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          applicantId,
+          decision,
+        }),
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`서버 오류: ${response.status} - ${response.statusText}`)
+      }
+      
+      const result: ApiResponse<{
+        applicantId: number
+        nickName: string
+        decision: string
+      }> = await response.json()
+      
+      return result.data
+    } catch (error) {
+      throw error
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'PENDING': return '승인대기'
+      case 'APPROVED': return '승인완료'
+      case 'REJECTED': return '거절됨'
+      case 'OPEN': return '모집중'
+      case 'CLOSED': return '모집완료'
+      default: return status
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const month = date.getMonth() + 1
+    const day = date.getDate()
+    const hours = date.getHours()
+    const minutes = date.getMinutes()
+    
+    const period = hours >= 12 ? '오후' : '오전'
+    const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours
+    
+    return `${month}월 ${day}일 ${period} ${displayHours}시${minutes > 0 ? ` ${minutes}분` : ''}`
+  }
+
+  useEffect(() => {
+    const loadMyPosts = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const posts = await fetchMyPosts()
+        setMyPosts(posts)
+        
+        for (let i = 0; i < posts.length; i++) {
+          try {
+            const postId = posts[i].postId || (i + 1)
+            const applicants = await fetchApplicants(postId)
+            setApplicantsMap(prev => ({
+              ...prev,
+              [i]: applicants
+            }))
+          } catch (err) {
+            setApplicantsMap(prev => ({
+              ...prev,
+              [i]: []
+            }))
+          }
+        }
+      } catch (err) {
+        if (!(err instanceof Error) || !err.message.includes("인증")) {
+          setError(err instanceof Error ? err.message : '데이터를 불러오는데 실패했습니다.')
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadMyPosts()
+  }, [])
+
+  const toggleExpanded = async (postIndex: number) => {
+    const isExpanding = !expandedPosts.includes(postIndex)
+    
+    setExpandedPosts(prev => 
+      prev.includes(postIndex) 
+        ? prev.filter(id => id !== postIndex)
+        : [...prev, postIndex]
+    )
+    
+    if (isExpanding && (!applicantsMap[postIndex] || applicantsMap[postIndex].length === 0)) {
+      try {
+        const postId = myPosts[postIndex]?.postId || (postIndex + 1)
+        const applicants = await fetchApplicants(postId)
+        setApplicantsMap(prev => ({
+          ...prev,
+          [postIndex]: applicants
+        }))
+      } catch (err) {
+        setApplicantsMap(prev => ({
+          ...prev,
+          [postIndex]: []
+        }))
+      }
+    }
+  }
+
+  const handleApprove = async (postIndex: number, applicantId: number) => {
+    try {
+      const postId = myPosts[postIndex]?.postId || (postIndex + 1)
+      const result = await manageApplicant(postId, applicantId, 'ACCEPT')
+      
+      setApplicantsMap(prev => ({
+        ...prev,
+        [postIndex]: prev[postIndex]?.map(applicant => 
+          applicant.userId === applicantId 
+            ? { ...applicant, status: 'APPROVED' as const }
+            : applicant
+        ) || []
+      }))
+
+      setMyPosts(prev => prev.map((post, index) => {
+        if (index === postIndex) {
+          const newCurrentPeople = post.currentPeople + 1
+          const newStatus = newCurrentPeople >= post.maxPeople ? 'CLOSED' : post.status
+          return { 
+            ...post, 
+            currentPeople: newCurrentPeople,
+            status: newStatus as "OPEN" | "CLOSED"
+          }
+        }
+        return post
+      }))
+
+      alert(`${result.nickName}님을 승인했습니다.`)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '승인에 실패했습니다.')
+    }
+  }
+
+  const handleReject = async (postIndex: number, applicantId: number) => {
+    try {
+      const postId = myPosts[postIndex]?.postId || (postIndex + 1)
+      const result = await manageApplicant(postId, applicantId, 'REJECT')
+      
+      const currentApplicant = applicantsMap[postIndex]?.find(applicant => applicant.userId === applicantId)
+      const wasApproved = currentApplicant?.status === 'APPROVED'
+      
+      setApplicantsMap(prev => ({
+        ...prev,
+        [postIndex]: prev[postIndex]?.map(applicant => 
+          applicant.userId === applicantId 
+            ? { ...applicant, status: 'REJECTED' as const }
+            : applicant
+        ) || []
+      }))
+
+      if (wasApproved) {
+        setMyPosts(prev => prev.map((post, index) => {
+          if (index === postIndex) {
+            const newCurrentPeople = Math.max(0, post.currentPeople - 1)
+            const newStatus = newCurrentPeople < post.maxPeople ? 'OPEN' : post.status
+            return { 
+              ...post, 
+              currentPeople: newCurrentPeople,
+              status: newStatus as "OPEN" | "CLOSED"
+            }
+          }
+          return post
+        }))
+      }
+
+      alert(`${result.nickName}님을 거절했습니다.`)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '거절에 실패했습니다.')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">불러오는 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()} className="bg-blue-500 hover:bg-blue-600">
+            다시 시도
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 p-4">
         <div className="flex items-center gap-4">
           <Link href="/mypage">
@@ -98,23 +337,20 @@ export default function MyPostsManagePage() {
       </div>
 
       <div className="p-4 pb-20">
-        {/* Posts List */}
         <div className="space-y-4">
-          {myPostsWithApplicants.map((post) => (
-            <Card key={post.id} className="bg-white">
+          {Array.isArray(myPosts) && myPosts.map((post, index) => (
+            <Card key={index} className="bg-white">
               <CardContent className="p-4">
                 <div className="flex justify-between items-start mb-3">
                   <Badge
-                    variant="secondary"
-                    className={`${post.sport === "축구" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}
+                    variant={post.status === "OPEN" ? "default" : "secondary"}
+                    className={
+                      post.status === "OPEN" 
+                        ? "bg-green-500 text-white" 
+                        : "bg-gray-500 text-white"
+                    }
                   >
-                    {post.sport}
-                  </Badge>
-                  <Badge
-                    variant={post.status === "모집중" ? "default" : "secondary"}
-                    className={post.status === "모집중" ? "bg-green-500" : "bg-gray-500"}
-                  >
-                    {post.status}
+                    {getStatusText(post.status)}
                   </Badge>
                 </div>
 
@@ -122,29 +358,27 @@ export default function MyPostsManagePage() {
 
                 <div className="space-y-2 text-sm text-gray-600 mb-4">
                   <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-red-500" />
-                    <span>{post.location}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-blue-500" />
-                    <span>{post.time}</span>
+                    <span>{formatDate(post.date)}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-green-500" />
-                    <span>{post.participants}</span>
+                    <span>{post.currentPeople}/{post.maxPeople}명</span>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between mb-4">
-                  <div className="text-lg font-bold text-red-500">{post.cost}</div>
+                  <div className="text-sm text-gray-600">
+                    모집 현황: {post.currentPeople}/{post.maxPeople}명
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => toggleExpanded(post.id)}
+                    onClick={() => toggleExpanded(index)}
                     className="flex items-center gap-2"
                   >
-                    신청자 보기 ({post.applicants.length}명)
-                    {expandedPosts.includes(post.id) ? (
+                    신청자 보기 ({(applicantsMap[index]?.length ?? '?')}명)
+                    {expandedPosts.includes(index) ? (
                       <ChevronUp className="w-4 h-4" />
                     ) : (
                       <ChevronDown className="w-4 h-4" />
@@ -152,63 +386,68 @@ export default function MyPostsManagePage() {
                   </Button>
                 </div>
 
-                {/* Applicants List */}
-                {expandedPosts.includes(post.id) && (
+                {expandedPosts.includes(index) && (
                   <div className="border-t border-gray-200 pt-4 space-y-3">
                     <h5 className="font-medium text-gray-900">신청자 목록</h5>
-                    {post.applicants.map((applicant) => (
-                      <div key={applicant.id} className="bg-gray-50 rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                              {applicant.nickname.charAt(0)}
+                    {!applicantsMap[index] ? (
+                      <p className="text-gray-500 text-center py-4">로딩 중...</p>
+                    ) : applicantsMap[index].length > 0 ? (
+                      applicantsMap[index].map((applicant) => (
+                        <div key={applicant.userId} className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                                {applicant.nickname.charAt(0)}
+                              </div>
+                              <div>
+                                <p className="font-medium">{applicant.nickname}</p>
+                                <p className="text-sm text-gray-600">
+                                  {applicant.gender} · {applicant.age}세
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium">{applicant.nickname}</p>
-                              <p className="text-sm text-gray-600">
-                                {applicant.gender} · {applicant.age}세
-                              </p>
-                            </div>
-                          </div>
-                          <Badge
-                            className={`${
-                              applicant.status === "승인완료"
-                                ? "bg-green-500"
-                                : applicant.status === "승인대기"
+                            <Badge
+                              className={`${
+                                applicant.status === "APPROVED"
+                                  ? "bg-green-500"
+                                  : applicant.status === "PENDING"
                                   ? "bg-yellow-500"
                                   : "bg-red-500"
-                            } text-white`}
-                          >
-                            {applicant.status}
-                          </Badge>
-                        </div>
-
-                        <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
-                          <span>모집회수: {applicant.recruitCount}회</span>
-                          <span>신청횟수: {applicant.applicationCount}회</span>
-                        </div>
-
-                        {applicant.status === "승인대기" && (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              className="bg-green-500 hover:bg-green-600 text-white flex-1"
-                              onClick={() => handleApprove(post.id, applicant.id)}
+                              } text-white`}
                             >
-                              승인
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-red-500 border-red-200 hover:bg-red-50 flex-1 bg-transparent"
-                              onClick={() => handleReject(post.id, applicant.id)}
-                            >
-                              거절
-                            </Button>
+                              {getStatusText(applicant.status)}
+                            </Badge>
                           </div>
-                        )}
+
+                          {applicant.status === "PENDING" && (
+                            <div className="flex gap-2 mt-3">
+                              <Button
+                                size="sm"
+                                className="bg-green-500 hover:bg-green-600 text-white flex-1"
+                                onClick={() => handleApprove(index, applicant.userId)}
+                              >
+                                승인
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-red-500 border-red-200 hover:bg-red-50 flex-1 bg-transparent"
+                                onClick={() => handleReject(index, applicant.userId)}
+                              >
+                                거절
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-gray-500 mb-2">신청자가 없거나 조회 권한이 없습니다</p>
+                        <p className="text-xs text-gray-400">
+                          일부 게시글은 권한 설정으로 인해 신청자를 조회할 수 없을 수 있습니다
+                        </p>
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -216,7 +455,7 @@ export default function MyPostsManagePage() {
           ))}
         </div>
 
-        {myPostsWithApplicants.length === 0 && (
+        {(!Array.isArray(myPosts) || myPosts.length === 0) && (
           <div className="text-center py-12">
             <p className="text-gray-500 mb-4">작성한 모집글이 없습니다</p>
             <Link href="/create-post">
@@ -226,7 +465,6 @@ export default function MyPostsManagePage() {
         )}
       </div>
 
-      {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
         <div className="flex justify-around">
           <Link href="/" className="flex flex-col items-center gap-1 text-gray-400">
@@ -251,4 +489,20 @@ export default function MyPostsManagePage() {
       </div>
     </div>
   )
+}
+
+const MyPostsContent = dynamic(() => Promise.resolve(MyPostsContentComponent), {
+  ssr: false,
+  loading: () => (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+        <p className="text-gray-600">불러오는 중...</p>
+      </div>
+    </div>
+  )
+})
+
+export default function MyPostsManagePage() {
+  return <MyPostsContent />
 }
