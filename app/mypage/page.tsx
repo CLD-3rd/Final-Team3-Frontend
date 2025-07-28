@@ -3,10 +3,74 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ChevronRight, User, Settings, FileText, Heart, List } from "lucide-react"
+import { ChevronRight, User, Settings, FileText, Heart, List, ReceiptPoundSterling } from "lucide-react"
 import Link from "next/link"
-import { apiClient } from "@/lib/api-client"
-import type { User as UserType } from "@/types/api"
+
+// API 응답 타입 정의
+interface ApiResponse<T> {
+  code: string
+  message: string
+  data: T
+}
+
+interface UserProfile {
+  id: number
+  email: string
+  nickName: string
+  age: number
+  sports: string
+  town: string
+  recruitCount: number
+  joinCount: number
+}
+
+interface MyPost {
+  postId: number
+  title: string
+  date: string
+  currentPeople: number
+  maxPeople: number
+  status: string
+}
+
+interface MyPosts {
+  posts: MyPost[]
+}
+
+interface FollowPost {
+  postId: number
+  title: string
+  sports: string
+  location: string
+  date: string
+  currentPeople: number
+  maxPeople: number
+  followedAt: string
+  cost: number
+  status: string
+}
+
+interface MyApplication {
+  postId: number
+  title: string
+  date: string
+  currentPeople: number
+  maxPeople: number
+  location: string
+  cost: number
+  status: "PENDING" | "APPROVED" | "REJECTED" // 내 신청 상태
+  postStatus: "OPEN" | "CLOSED" // 모집글의 상태 
+}
+
+// 스포츠 한글 매핑
+const sportsMapping: { [key: string]: string } = {
+  FOOTBALL: "축구",
+  TENNIS: "테니스", 
+  BASKETBALL: "농구",
+  VOLLEYBALL: "배구",
+  BADMINTON: "배드민턴",
+  TABLE_TENNIS: "탁구"
+}
 
 const menuItems = [
   {
@@ -36,45 +100,134 @@ const menuItems = [
 ]
 
 export default function MyPage() {
-  const [user, setUser] = useState<UserType | null>(null)
+  const [user, setUser] = useState<UserProfile | null>(null)
   const [stats, setStats] = useState({
     participatedCount: 0,
     myPostsCount: 0,
     favoritesCount: 0,
   })
-  const [loading, setLoading] = useState(true)
+  const [userLoading, setUserLoading] = useState(true) // 유저 정보 로딩
+  const [statsLoading, setStatsLoading] = useState(true) // 통계 로딩
+  const [error, setError] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false) // 마운트 상태 추가
 
+  
+  const getToken = () => {
+    if (typeof window === 'undefined') return null 
+    return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token')
+  }
+
+  // 인증된 요청 헬퍼
+  const makeAuthenticatedRequest = async (url: string, options?: RequestInit) => {
+    const token = getToken()
+    if (!token) {
+      throw new Error('로그인이 필요합니다.')
+    }
+
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`서버 오류: ${response.status}`)
+    }
+
+    return response
+  }
+
+  // 유저 프로필 조회
+  const fetchUserProfile = async (): Promise<UserProfile> => {
+    const response = await makeAuthenticatedRequest('http://localhost:8080/api/user/mypage')
+    const result: ApiResponse<UserProfile> = await response.json()
+    return result.data
+  }
+
+  // 내 모집글 조회
+  const fetchMyPosts = async (): Promise<MyPost[]> => {
+    const response = await makeAuthenticatedRequest('http://localhost:8080/api/posts/mine')
+    const result: ApiResponse<MyPosts> = await response.json()
+    return result.data.posts
+  }
+
+  // 찜한 모집글 조회
+  const fetchMyFollows = async (): Promise<FollowPost[]> => {
+    const response = await makeAuthenticatedRequest('http://localhost:8080/api/user/follow')
+    const result: ApiResponse<FollowPost[]> = await response.json()
+    return result.data
+  }
+
+  // 내가 신청한 모집글 조회
+  const fetchMyApplications = async (): Promise<MyApplication[]> => {
+    const response = await makeAuthenticatedRequest('http://localhost:8080/api/posts/apply')
+    const result: ApiResponse<MyApplication[]> = await response.json()
+    return result.data
+  }
+
+  // 참여한 모임 수 계산
+  const calculateParticipatedCount = (applications: MyApplication[]): number => {
+    const now = new Date()
+    return applications.filter(app => {
+      if (app.status !== 'APPROVED') return false
+      if (app.postStatus !== 'CLOSED') return false
+      const meetingDate = new Date(app.date)
+      return meetingDate < now
+    }).length
+  }
+
+  // 데이터 로딩: 마운트 후에만 실행
   useEffect(() => {
-    fetchUserData()
+    setMounted(true) 
   }, [])
 
-  const fetchUserData = async () => {
-    try {
-      setLoading(true)
-      const [profile, myPosts, favorites, applications] = await Promise.all([
-        apiClient.getProfile(),
-        apiClient.getMyPosts(),
-        apiClient.getFavorites(),
-        apiClient.getMyApplications(),
-      ])
+  useEffect(() => {
+    if (!mounted) ReceiptPoundSterling
 
-      setUser(profile)
-      setStats({
-        participatedCount: applications.length,
-        myPostsCount: myPosts.length,
-        favoritesCount: favorites.length,
-      })
-    } catch (error) {
-      console.error("Failed to fetch user data:", error)
-    } finally {
-      setLoading(false)
+    const loadData = async () => {
+      try {
+        setError(null)
+
+        const userProfile = await fetchUserProfile()
+        setUser(userProfile)
+        setUserLoading(false) 
+
+        // 나머지 데이터 병렬로 로드
+        const [myPosts, follows, applications] = await Promise.all([
+          fetchMyPosts(),
+          fetchMyFollows(),
+          fetchMyApplications(),
+        ])
+
+        // 통계 계산 및 업데이트
+        setStats({
+          participatedCount: calculateParticipatedCount(applications),
+          myPostsCount: myPosts.length,
+          favoritesCount: follows.length,
+        })
+        setStatsLoading(false) 
+
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '데이터를 불러오는데 실패했습니다.')
+        console.error('Failed to fetch data:', err)
+        setUserLoading(false)
+        setStatsLoading(false)
+      }
     }
-  }
+
+    loadData()
+  }, [mounted]) // mounted가 true가 된 후에만 실행
 
   const handleLogout = async () => {
     if (confirm("로그아웃 하시겠습니까?")) {
       try {
-        await apiClient.logout()
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth_token')
+          sessionStorage.removeItem('auth_token')
+        }
         window.location.href = "/login"
       } catch (error) {
         console.error("Logout error:", error)
@@ -82,10 +235,26 @@ export default function MyPage() {
     }
   }
 
-  if (loading) {
+  if (!mounted || userLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">사용자 정보를 불러오는 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()} className="bg-blue-500 hover:bg-blue-600">
+            다시 시도
+          </Button>
+        </div>
       </div>
     )
   }
@@ -98,8 +267,16 @@ export default function MyPage() {
           <div className="w-20 h-20 bg-white rounded-full mx-auto mb-4 flex items-center justify-center">
             <User className="w-10 h-10 text-blue-500" />
           </div>
-          <h2 className="text-xl font-bold mb-1">{user?.nickname || "사용자"}님</h2>
-          <p className="text-sm opacity-90">{user?.email}</p>
+          <h2 className="text-xl font-bold mb-2">{user?.nickName}님</h2>
+          <p className="text-sm opacity-90 mb-2">{user?.email}</p>
+          <div className="flex items-center justify-center gap-4 text-sm">
+            <div className="bg-white/20 px-3 py-1 rounded-full">
+              {user?.age}세
+            </div>
+            <div className="bg-white/20 px-3 py-1 rounded-full">
+              {sportsMapping[user?.sports || ""] || user?.sports}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -108,20 +285,47 @@ export default function MyPage() {
         <div className="grid grid-cols-3 gap-4 mb-6">
           <Card>
             <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-blue-500">{stats.participatedCount}</p>
-              <p className="text-sm text-gray-600">참여한 모임</p>
+              {statsLoading ? (
+                <div className="animate-pulse">
+                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-16 mx-auto"></div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold text-blue-500">{stats.participatedCount}</p>
+                  <p className="text-sm text-gray-600">참여한 모임</p>
+                </>
+              )}
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-green-500">{stats.myPostsCount}</p>
-              <p className="text-sm text-gray-600">내 모집글</p>
+              {statsLoading ? (
+                <div className="animate-pulse">
+                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-16 mx-auto"></div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold text-green-500">{stats.myPostsCount}</p>
+                  <p className="text-sm text-gray-600">내 모집글</p>
+                </>
+              )}
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-red-500">{stats.favoritesCount}</p>
-              <p className="text-sm text-gray-600">찜한 모집글</p>
+              {statsLoading ? (
+                <div className="animate-pulse">
+                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-16 mx-auto"></div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold text-red-500">{stats.favoritesCount}</p>
+                  <p className="text-sm text-gray-600">찜한 모집글</p>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
