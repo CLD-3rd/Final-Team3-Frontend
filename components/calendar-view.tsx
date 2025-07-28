@@ -163,13 +163,22 @@ export default function CalendarView({ onDateSelect }: CalendarViewProps) {
             const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
 
             const now = new Date();
+            const dateObj = new Date(dateStr); // 해당 day의 날짜
+            const isToday = dateObj.toDateString() === now.toDateString();
+            const isFutureDate = dateObj > now;
+            
+            const sportBadgeCounts: Record<string, number> = {};
 
-            // 1. dayEvents가 비어있으면 무조건 false
-            // 2. dayEvents 내부에 "현재 이후의 모집글"이 1개라도 있으면 true
-            const hasFutureEvent = dayEvents.some(event => {
-              // event.event.time 배열 중 하나라도 future인지 체크
-              if (event.event && Array.isArray(event.event.time)) {
-                return event.event.time.some(timeStr => {
+            dayEvents.forEach(event => {
+              const sport = event.event.sports ?? "기타";
+              const times = Array.isArray(event.event.time) ? event.event.time : [];
+              let futureTimesCount = 0;
+
+              if (isFutureDate) {
+                futureTimesCount = times.length;
+              } else if (isToday) {
+                // 오늘이면 현재 시각 이후만 카운트
+                futureTimesCount = times.filter(timeStr => {
                   const [hour, minute] = timeStr.split(":").map(Number);
                   const eventDateTime = new Date(
                     now.getFullYear(),
@@ -178,11 +187,26 @@ export default function CalendarView({ onDateSelect }: CalendarViewProps) {
                     hour,
                     minute
                   );
+                  console.log(
+                    `dateStr=${dateStr}`,
+                    `now=${now.toISOString()}`,
+                    `eventDateTime=${eventDateTime.toISOString()}`,
+                    `eventDateTime > now =`, eventDateTime > now
+                  );
                   return eventDateTime > now;
-                });
+                }).length;
               }
-              return false;
+              // 과거 날짜면 0
+
+              if (futureTimesCount > 0) {
+                sportBadgeCounts[sport] = (sportBadgeCounts[sport] || 0) + futureTimesCount;
+              }
             });
+
+              // 종목별 뱃지(2개까지), 나머지는 +n
+            const sportBadgeEntries = Object.entries(sportBadgeCounts).filter(([_, count]) => count > 0);
+
+            const hasFutureEvent = sportBadgeEntries.length > 0;
 
             return (
               <button
@@ -192,14 +216,17 @@ export default function CalendarView({ onDateSelect }: CalendarViewProps) {
               >
                 <span className="text-sm font-medium mb-1">{day}</span>
                 <div className="flex flex-wrap gap-1">
-                  {hasFutureEvent && dayEvents.slice(0, 2).map((event, idx) => (
-                    <Badge key={idx} className={`${event.color} text-white text-xs px-1 py-0 h-4 min-w-0`}>
-                      {event.event.totalEvents}
+                  { hasFutureEvent && sportBadgeEntries.slice(0, 6).map(([sport, count], idx) => (
+                    <Badge
+                      key={sport}
+                      className={`${getSportColor(sport)} text-white text-xs px-1 py-0 h-4 min-w-0`}
+                    >
+                    {count}
                     </Badge>
-                  ))}
-                  {hasFutureEvent && dayEvents.length > 2 && (
-                    <Badge className="bg-gray-400 text-white text-xs px-1 py-0 h-4">+{dayEvents.length - 2}</Badge>
-                  )}
+                    ))}
+                 {/* { hasFutureEvent && dayEvents.length > 2 && (
+                    <Badge className="bg-gray-400 text-white text-xs px-1 py-0 h-4">+{sportBadgeEntries.length - 2}</Badge>
+                  )} */}
                 </div>
               </button>
             )
