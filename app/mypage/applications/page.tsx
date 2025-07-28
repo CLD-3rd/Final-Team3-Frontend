@@ -23,17 +23,18 @@ interface ApplicationData {
   location: string
   cost: number
   status: "PENDING" | "APPROVED" | "REJECTED"
+  postStatus: "OPEN" | "CLOSED"
 }
 
 interface DisplayApplication {
   id: number
-  sport: string
   title: string
   location: string
   time: string
   participants: string
   cost: string
   status: string
+  postStatus: string
   appliedDate: string
 }
 
@@ -94,13 +95,13 @@ export default function ApplicationsPage() {
       
       const transformedData: DisplayApplication[] = apiData.data.map((item) => ({
         id: item.postId,
-        sport: extractSportFromTitle(item.title),
         title: item.title,
         location: item.location,
         time: formatDateTime(item.date),
         participants: `${item.currentPeople}/${item.maxPeople}명`,
         cost: !item.cost || item.cost === 0 ? "무료" : `${Number(item.cost).toLocaleString()}원`,
         status: getStatusInKorean(item.status),
+        postStatus: getPostStatusInKorean(item.postStatus),
         appliedDate: new Date().toISOString().split('T')[0],
       }))
 
@@ -125,15 +126,6 @@ export default function ApplicationsPage() {
     }
   }, [mounted])
 
-  const extractSportFromTitle = (title: string): string => {
-    if (title.includes('축구')) return '축구'
-    if (title.includes('배드민턴')) return '배드민턴'
-    if (title.includes('탁구')) return '탁구'
-    if (title.includes('테니스')) return '테니스'
-    if (title.includes('농구')) return '농구'
-    return '기타'
-  }
-
   const formatDateTime = (isoString: string): string => {
     const date = new Date(isoString)
     const month = date.getMonth() + 1
@@ -150,6 +142,14 @@ export default function ApplicationsPage() {
       case 'PENDING': return '승인대기'
       case 'APPROVED': return '승인완료'
       case 'REJECTED': return '거절'
+      default: return '알 수 없음'
+    }
+  }
+
+  const getPostStatusInKorean = (status: string): string => {
+    switch (status) {
+      case 'OPEN': return '모집중'
+      case 'CLOSED': return '모집완료'
       default: return '알 수 없음'
     }
   }
@@ -171,14 +171,11 @@ export default function ApplicationsPage() {
     }
   }
 
-  const getSportColor = (sport: string) => {
-    switch (sport) {
-      case "축구": return "bg-blue-100 text-blue-700"
-      case "테니스": return "bg-green-100 text-green-700"
-      case "배드민턴": return "bg-purple-100 text-purple-700"
-      case "탁구": return "bg-red-100 text-red-700"
-      case "농구": return "bg-orange-100 text-orange-700"
-      default: return "bg-gray-100 text-gray-700"
+  const getPostStatusColor = (status: string) => {
+    switch (status) {
+      case "모집중": return "bg-green-500"
+      case "모집완료": return "bg-gray-500"
+      default: return "bg-gray-500"
     }
   }
 
@@ -257,9 +254,11 @@ export default function ApplicationsPage() {
                   <Card className="bg-white hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start mb-3">
-                        <Badge variant="secondary" className={getSportColor(application.sport)}>
-                          {application.sport}
-                        </Badge>
+                        <div className="flex gap-2">
+                          <Badge className={`${getPostStatusColor(application.postStatus)} text-white`}>
+                            {application.postStatus}
+                          </Badge>
+                        </div>
                         <Badge className={`${getStatusColor(application.status)} text-white`}>
                           {application.status}
                         </Badge>
