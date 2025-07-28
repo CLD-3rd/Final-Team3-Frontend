@@ -8,7 +8,6 @@ import { ArrowLeft, Clock, Users, ChevronDown, ChevronUp, CheckCircle, XCircle }
 import Link from "next/link"
 import dynamic from "next/dynamic"
 
-// 타입 정의 추가
 interface MyPost {
   postId?: number
   title: string
@@ -83,14 +82,17 @@ function MyPostsContentComponent() {
     return localStorage.getItem("auth_token") || localStorage.getItem("accessToken")
   }
 
+
   const addToast = (message: string, type: 'success' | 'error') => {
     const id = Date.now()
     setToasts(prev => [...prev, { id, message, type }])
     
+
     setTimeout(() => {
       setToasts(prev => prev.filter(toast => toast.id !== id))
     }, 3000)
   }
+
 
   const removeToast = (id: number) => {
     setToasts(prev => prev.filter(toast => toast.id !== id))
@@ -138,7 +140,6 @@ function MyPostsContentComponent() {
     }
     const result: ApiResponse<GetMyPosts> = await response.json()
     
-    addToast(result.message, 'success')  
     
     if (!result.data || !Array.isArray(result.data.posts)) {
       return []
@@ -161,7 +162,7 @@ function MyPostsContentComponent() {
       
       const result: ApiResponse<GetMyPostApplicants> = await response.json()
       
-      addToast(result.message, 'success')  
+
       
       return result.data.applicants || []
     } catch (error) {
@@ -185,9 +186,8 @@ function MyPostsContentComponent() {
       }
       
       const result: ApiResponse<DecisionApplicant> = await response.json()
-      
-      // 백엔드 성공 메시지 표시
-      addToast(result.message, 'success')  // "신청자 관리가 성공적으로 완료되었습니다."
+
+      addToast(result.message, 'success') 
       
       return result.data
     } catch (error) {
@@ -271,6 +271,7 @@ function MyPostsContentComponent() {
           ...prev,
           [postIndex]: applicants
         }))
+        
       } catch (err) {
         setApplicantsMap(prev => ({
           ...prev,
@@ -344,6 +345,7 @@ function MyPostsContentComponent() {
           return post
         }))
       }
+
     } catch (err) {
       addToast(err instanceof Error ? err.message : '거절에 실패했습니다.', 'error')
     }
