@@ -1,10 +1,11 @@
 export interface User {
   id: number
   email: string
-  nickname: string
+  nickName: string
   age: number
   gender: "male" | "female"
   region: string
+  town?: string
   preferredSports: string[]
   createdAt: string
   updatedAt: string
@@ -14,12 +15,14 @@ export interface Post {
   id: number
   title: string
   content?: string
-  sport: string
-  location: string
+  sports: string
+  town: string // 게시글에 표시하는 지역명
+  location?: string // 게시글 상세 조회에서 나오는 지역명
   date: string
   time: string
-  currentParticipants: number
-  maxParticipants: number
+  currentPeople: number
+  maxPeople: number
+  viewCount?: number
   cost: number
   gender: "all" | "male" | "female"
   status: "모집중" | "모집완료" | "마감임박"
@@ -69,8 +72,11 @@ export interface ApiResponse<T> {
 }
 
 export interface CalendarEvent {
-  date: string
-  sport: string
-  count: number
+  day: string
+  event: {
+    sports: string
+    totalEvents: number
+    time: string[]  
+  }
   color: string
 }

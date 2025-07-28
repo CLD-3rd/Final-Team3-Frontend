@@ -169,31 +169,23 @@ class ApiClient {
     await this.request(`/posts/${id}`, { method: "DELETE" })
   }
 
-  // Favorites methods
-  async getFavorites(): Promise<{ postId: number; post: Post }[]> {
-    try {
-      const response = await this.request<ApiResponse<{ postId: number; post: Post }[]>>("/favorites")
-      return response.data || []
-    } catch (error) {
-      console.error("Failed to fetch favorites:", error)
-      return []
-    }
-  }
-
-  async addFavorite(postId: number): Promise<void> {
-    await this.request("/favorites", {
+  // 찜하기 기능
+  async toggleFollow(postId: number): Promise<ApiResponse<any>> {
+    return this.request<ApiResponse<any>>(`/posts/${postId}/follow`, {
       method: "POST",
-      body: JSON.stringify({ postId }),
-    })
+    });
   }
 
-  async removeFavorite(postId: number): Promise<void> {
-    await this.request(`/favorites/${postId}`, { method: "DELETE" })
+  // 내가 찜한 목록 조회
+  async getMyFollows(): Promise<number[]> {
+    const res = await this.request<ApiResponse<any[]>>("/user/follow");
+    // res.data: [{ postId, ... }, ...]
+    return res.data?.map(item => item.postId) || [];
   }
 
   // User methods
   async getProfile(): Promise<User> {
-    const response = await this.request<ApiResponse<User>>("/users/profile")
+    const response = await this.request<ApiResponse<User>>("/user/mypage")
     if (!response.data) {
       throw new Error("Failed to get profile")
     }
@@ -254,3 +246,10 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient(API_BASE_URL)
+
+export async function fetchPostsCalender(year: number, month: number) {
+  const monthStr = month.toString().padStart(2, "0");
+  const response = await fetch(`http://localhost:8080/api/posts/calender?month=${year}-${monthStr}`);
+  if (!response.ok) throw new Error("Failed to fetch calendar events");
+  return await response.json();
+}

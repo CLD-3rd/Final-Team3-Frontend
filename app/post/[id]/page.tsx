@@ -194,7 +194,7 @@ export default function PostDetailPage() {
                 <div>
                   <p className="font-medium">모집 인원</p>
                   <p className="text-gray-600">
-                    {post.currentParticipants}/{post.maxParticipants}명
+                    {post.currentParticipants}/{post.maxPeople}명
                   </p>
                 </div>
               </div>
@@ -268,14 +268,14 @@ export default function PostDetailPage() {
         {/* Apply Button */}
         <Button
           onClick={handleApply}
-          disabled={applying || post.status !== "모집중" || post.currentParticipants >= post.maxParticipants}
+          disabled={applying || post.status !== "모집중" || post.currentParticipants >= post.maxPeople}
           className="w-full bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white font-semibold py-4 text-lg disabled:opacity-50"
         >
           {applying
             ? "신청 중..."
             : post.status !== "모집중"
               ? "모집 마감"
-              : post.currentParticipants >= post.maxParticipants
+              : post.currentParticipants >= post.maxPeople
                 ? "인원 마감"
                 : "신청하기"}
         </Button>

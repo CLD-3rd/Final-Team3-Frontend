@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { apiClient } from "@/lib/api-client"
-import type { CalendarEvent } from "@/types/api"
+import type { CalendarEvent, Post } from "@/types/api"
+import { fetchPostsCalender } from "@/lib/api-client";
 
 interface CalendarViewProps {
   onDateSelect: (date: string) => void
@@ -26,34 +27,20 @@ export default function CalendarView({ onDateSelect }: CalendarViewProps) {
       const year = currentDate.getFullYear()
       const month = currentDate.getMonth() + 1
 
-      // API에서 해당 월의 이벤트 데이터를 가져옴
-      const posts = await apiClient.getPosts({
-        date: `${year}-${month.toString().padStart(2, "0")}`,
-      })
+       // API에서 해당 월의 모집글(이벤트) 데이터 받아오기
+      const res = await fetchPostsCalender(year, month)
 
-      // 게시글 데이터를 캘린더 이벤트 형태로 변환
-      const calendarEvents: CalendarEvent[] = []
-      const eventMap = new Map<string, Map<string, number>>()
+      const posts = res.data?.posts || [];
 
-      posts.forEach((post) => {
-        const date = post.date
-        if (!eventMap.has(date)) {
-          eventMap.set(date, new Map())
-        }
-        const sportMap = eventMap.get(date)!
-        sportMap.set(post.sport, (sportMap.get(post.sport) || 0) + 1)
-      })
-
-      eventMap.forEach((sportMap, date) => {
-        sportMap.forEach((count, sport) => {
-          calendarEvents.push({
-            date,
-            sport,
-            count,
-            color: getSportColor(sport),
-          })
-        })
-      })
+      const calendarEvents: CalendarEvent[] = posts.map((item: any) => ({
+        day: item.day,
+        event: {
+          sports: item.event.sports,
+          totalEvents: item.event.totalEvents,
+          time: item.event.time, 
+        },
+        color: getSportColor(item.event.sports),
+      }));    
 
       setEvents(calendarEvents)
     } catch (error) {
@@ -85,8 +72,30 @@ export default function CalendarView({ onDateSelect }: CalendarViewProps) {
   }
 
   const getEventsForDate = (day: number) => {
-    const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
-    return events.filter((event) => event.date === dateStr)
+    const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const now = new Date();
+
+    // 오늘 날짜면 "현재 시각 이후"만
+    if (dateStr === now.toISOString().split("T")[0]) {
+      return events.filter(event => {
+        if (event.day !== dateStr) return false;
+        if (event.event && Array.isArray(event.event.time)) {
+          return event.event.time.some(timeStr => {
+            const [hour, minute] = timeStr.split(":").map(Number);
+            const eventDateTime = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate(),
+              hour,
+              minute
+            );
+          return eventDateTime > now;
+        });
+      }
+      return true;
+      });
+    }
+    return events.filter((event) => event.day === dateStr);
   }
 
   const navigateMonth = (direction: "prev" | "next") => {
@@ -107,7 +116,7 @@ export default function CalendarView({ onDateSelect }: CalendarViewProps) {
   const dayNames = ["일", "월", "화", "수", "목", "금", "토"]
 
   // 고유한 스포츠 목록 생성
-  const uniqueSports = Array.from(new Set(events.map((event) => event.sport)))
+  const uniqueSports = Array.from(new Set(events.map((event) => event.event.sports)))
 
   return (
     <div className="bg-white rounded-lg p-4">
@@ -147,32 +156,55 @@ export default function CalendarView({ onDateSelect }: CalendarViewProps) {
               <div key={`empty-${i}`} className="h-16" />
             ))}
 
-            {/* Days of the month */}
-            {Array.from({ length: daysInMonth }, (_, i) => {
-              const day = i + 1
-              const dayEvents = getEventsForDate(day)
-              const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+          {/* Days of the month */}
+          {Array.from({ length: daysInMonth }, (_, i) => {
+            const day = i + 1
+            const dayEvents = getEventsForDate(day)
+            const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
 
-              return (
-                <button
-                  key={day}
-                  onClick={() => onDateSelect(dateStr)}
-                  className="h-16 p-1 border border-gray-100 hover:bg-gray-50 flex flex-col items-center justify-start rounded transition-colors"
-                >
-                  <span className="text-sm font-medium mb-1">{day}</span>
-                  <div className="flex flex-wrap gap-1">
-                    {dayEvents.slice(0, 2).map((event, idx) => (
-                      <Badge key={idx} className={`${event.color} text-white text-xs px-1 py-0 h-4 min-w-0`}>
-                        {event.count}
-                      </Badge>
-                    ))}
-                    {dayEvents.length > 2 && (
-                      <Badge className="bg-gray-400 text-white text-xs px-1 py-0 h-4">+{dayEvents.length - 2}</Badge>
-                    )}
-                  </div>
-                </button>
-              )
-            })}
+            const now = new Date();
+
+            // 1. dayEvents가 비어있으면 무조건 false
+            // 2. dayEvents 내부에 "현재 이후의 모집글"이 1개라도 있으면 true
+            const hasFutureEvent = dayEvents.some(event => {
+              // event.event.time 배열 중 하나라도 future인지 체크
+              if (event.event && Array.isArray(event.event.time)) {
+                return event.event.time.some(timeStr => {
+                  const [hour, minute] = timeStr.split(":").map(Number);
+                  const eventDateTime = new Date(
+                    now.getFullYear(),
+                    now.getMonth(),
+                    now.getDate(),
+                    hour,
+                    minute
+                  );
+                  return eventDateTime > now;
+                });
+              }
+              return false;
+            });
+
+            return (
+              <button
+                key={day}
+                onClick={() => onDateSelect(dateStr)}
+                className="h-16 p-1 border border-gray-100 hover:bg-gray-50 flex flex-col items-center justify-start rounded transition-colors"
+              >
+                <span className="text-sm font-medium mb-1">{day}</span>
+                <div className="flex flex-wrap gap-1">
+                  {hasFutureEvent && dayEvents.slice(0, 2).map((event, idx) => (
+                    <Badge key={idx} className={`${event.color} text-white text-xs px-1 py-0 h-4 min-w-0`}>
+                      {event.event.totalEvents}
+                    </Badge>
+                  ))}
+                  {hasFutureEvent && dayEvents.length > 2 && (
+                    <Badge className="bg-gray-400 text-white text-xs px-1 py-0 h-4">+{dayEvents.length - 2}</Badge>
+                  )}
+                </div>
+              </button>
+            )
+          })}
+
           </div>
 
           {/* Legend */}
