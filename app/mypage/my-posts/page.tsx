@@ -4,10 +4,11 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Clock, Users, ChevronDown, ChevronUp } from "lucide-react"
+import { ArrowLeft, Clock, Users, ChevronDown, ChevronUp, CheckCircle, XCircle } from "lucide-react"
 import Link from "next/link"
 import dynamic from "next/dynamic"
 
+// 타입 정의 추가
 interface MyPost {
   postId?: number
   title: string
@@ -31,9 +32,44 @@ interface ApiResponse<T> {
   data: T
 }
 
-interface MyPostsResponse {
+// 백엔드 응답 구조
+interface GetMyPosts {
   posts: MyPost[]
 }
+
+interface GetMyPostApplicants {
+  applicants: Applicant[]
+}
+
+interface DecisionApplicant {
+  applicantId: number
+  nickName: string
+  decision: string
+}
+
+// 토스트 메시지 타입
+interface ToastMessage {
+  id: number
+  message: string
+  type: 'success' | 'error'
+}
+
+// 토스트 컴포넌트
+const Toast = ({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) => (
+  <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg transition-all ${
+    type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+  }`}>
+    {type === 'success' ? (
+      <CheckCircle className="w-5 h-5" />
+    ) : (
+      <XCircle className="w-5 h-5" />
+    )}
+    <span className="text-sm font-medium">{message}</span>
+    <button onClick={onClose} className="ml-2 text-white/80 hover:text-white">
+      ×
+    </button>
+  </div>
+)
 
 function MyPostsContentComponent() {
   const [myPosts, setMyPosts] = useState<MyPost[]>([])
@@ -41,9 +77,23 @@ function MyPostsContentComponent() {
   const [expandedPosts, setExpandedPosts] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [toasts, setToasts] = useState<ToastMessage[]>([])
 
   const getAuthToken = () => {
     return localStorage.getItem("auth_token") || localStorage.getItem("accessToken")
+  }
+
+  const addToast = (message: string, type: 'success' | 'error') => {
+    const id = Date.now()
+    setToasts(prev => [...prev, { id, message, type }])
+    
+    setTimeout(() => {
+      setToasts(prev => prev.filter(toast => toast.id !== id))
+    }, 3000)
+  }
+
+  const removeToast = (id: number) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id))
   }
 
   const makeAuthenticatedRequest = async (url: string, options?: RequestInit) => {
@@ -86,18 +136,15 @@ function MyPostsContentComponent() {
     if (!response.ok) {
       throw new Error(`서버 오류: ${response.status}`)
     }
-    const result: ApiResponse<MyPostsResponse> = await response.json()
+    const result: ApiResponse<GetMyPosts> = await response.json()
+    
+    addToast(result.message, 'success')  
     
     if (!result.data || !Array.isArray(result.data.posts)) {
       return []
     }
     
-    const postsWithId = result.data.posts.map((post, index) => ({
-      ...post,
-      postId: post.postId || (index + 1)
-    }))
-    
-    return postsWithId
+    return result.data.posts
   }
 
   const fetchApplicants = async (postId: number): Promise<Applicant[]> => {
@@ -112,7 +159,10 @@ function MyPostsContentComponent() {
         throw new Error(`서버 오류: ${response.status} - ${response.statusText}`)
       }
       
-      const result: ApiResponse<{ applicants: Applicant[] }> = await response.json()
+      const result: ApiResponse<GetMyPostApplicants> = await response.json()
+      
+      addToast(result.message, 'success')  
+      
       return result.data.applicants || []
     } catch (error) {
       return []
@@ -134,11 +184,10 @@ function MyPostsContentComponent() {
         throw new Error(`서버 오류: ${response.status} - ${response.statusText}`)
       }
       
-      const result: ApiResponse<{
-        applicantId: number
-        nickName: string
-        decision: string
-      }> = await response.json()
+      const result: ApiResponse<DecisionApplicant> = await response.json()
+      
+      // 백엔드 성공 메시지 표시
+      addToast(result.message, 'success')  // "신청자 관리가 성공적으로 완료되었습니다."
       
       return result.data
     } catch (error) {
@@ -196,6 +245,7 @@ function MyPostsContentComponent() {
       } catch (err) {
         if (!(err instanceof Error) || !err.message.includes("인증")) {
           setError(err instanceof Error ? err.message : '데이터를 불러오는데 실패했습니다.')
+          addToast(err instanceof Error ? err.message : '데이터를 불러오는데 실패했습니다.', 'error')
         }
       } finally {
         setLoading(false)
@@ -226,6 +276,7 @@ function MyPostsContentComponent() {
           ...prev,
           [postIndex]: []
         }))
+        addToast('신청자 목록을 불러오는데 실패했습니다.', 'error')
       }
     }
   }
@@ -257,9 +308,8 @@ function MyPostsContentComponent() {
         return post
       }))
 
-      alert(`${result.nickName}님을 승인했습니다.`)
     } catch (err) {
-      alert(err instanceof Error ? err.message : '승인에 실패했습니다.')
+      addToast(err instanceof Error ? err.message : '승인에 실패했습니다.', 'error')
     }
   }
 
@@ -294,10 +344,8 @@ function MyPostsContentComponent() {
           return post
         }))
       }
-
-      alert(`${result.nickName}님을 거절했습니다.`)
     } catch (err) {
-      alert(err instanceof Error ? err.message : '거절에 실패했습니다.')
+      addToast(err instanceof Error ? err.message : '거절에 실패했습니다.', 'error')
     }
   }
 
@@ -327,6 +375,16 @@ function MyPostsContentComponent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* 토스트 메시지들 */}
+      {toasts.map((toast) => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => removeToast(toast.id)}
+        />
+      ))}
+
       <div className="bg-white border-b border-gray-200 p-4">
         <div className="flex items-center gap-4">
           <Link href="/mypage">
