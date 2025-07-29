@@ -688,9 +688,6 @@ export default function EditPostPage() {
             <p className="text-sm text-gray-500 mt-1">
               JPG, PNG 파일만 업로드 가능 (최대 5MB)
               <br />
-              <span className="text-xs text-orange-600">
-                * 현재는 이미지 선택만 가능하며, S3 연동 후 실제 업로드됩니다.
-              </span>
             </p>
           </div>
 
