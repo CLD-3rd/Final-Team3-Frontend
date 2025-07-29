@@ -60,6 +60,7 @@ interface PostData {
   maxPeople: number
   date: string
   location: string
+  userEmail: string 
 }
 
 export default function EditPostPage() {
@@ -92,6 +93,42 @@ export default function EditPostPage() {
 
   // 인증 토큰 가져오기
   const getAuthToken = () => localStorage.getItem("auth_token") || localStorage.getItem("accessToken")
+
+  // JWT 토큰에서 이메일 추출
+  const getEmailFromToken = () => {
+    try {
+      const token = getAuthToken()
+      if (!token) return null
+
+      // JWT 토큰을 디코딩 (payload 부분만)
+      const base64Url = token.split('.')[1]
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      )
+
+      const payload = JSON.parse(jsonPayload)
+      console.log("JWT 토큰 payload:", payload)
+      
+      return payload.email || payload.sub
+    } catch (error) {
+      console.error('JWT 토큰 파싱 실패:', error)
+      return null
+    }
+  }
+
+  // 로그인 체크 (페이지 진입 시)
+  useEffect(() => {
+    const token = getAuthToken()
+    if (!token) {
+      console.log("토큰이 없습니다. 로그인 페이지로 이동합니다.")
+      router.push('/login')
+      return
+    }
+  }, [router])
 
   const makeAuthenticatedRequest = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken()
@@ -126,7 +163,7 @@ export default function EditPostPage() {
     }
 
     if (response.status === 403) {
-      // 403 에러 시 재시도 (기존 로직 유지)
+      // 403 에러 시 재시도
       console.log("403 에러 발생, 0.5초 후 재시도...")
       await new Promise(resolve => setTimeout(resolve, 500))
       
@@ -150,9 +187,25 @@ export default function EditPostPage() {
     return response
   }
 
-  // 기존 게시글 데이터 로드
+  // 기존 게시글 데이터 로드 및 권한 체크
   useEffect(() => {
     const fetchPostData = async () => {
+      // 토큰 체크
+      const token = getAuthToken()
+      if (!token) {
+        console.log("토큰이 없어서 로그인 페이지로 이동")
+        router.push('/login')
+        return
+      }
+
+      // JWT에서 이메일 추출
+      const currentUserEmail = getEmailFromToken()
+      if (!currentUserEmail) {
+        setError("토큰에서 사용자 정보를 가져올 수 없습니다.")
+        router.push('/login')
+        return
+      }
+
       if (!postId || postId === 'undefined' || postId === 'null') {
         setError("잘못된 게시글 ID입니다.")
         setLoadingData(false)
@@ -166,13 +219,40 @@ export default function EditPostPage() {
         const response = await makeAuthenticatedRequest(`http://localhost:8080/api/posts/${postId}`)
         
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
+          if (response.status === 401) {
+            setError("로그인이 필요합니다.")
+            router.push('/login')
+            return
+          } else if (response.status === 403) {
+            setError("이 게시글을 수정할 권한이 없습니다.")
+            setTimeout(() => router.push('/mypage'), 2000)
+            return
+          } else if (response.status === 404) {
+            setError("존재하지 않는 게시글입니다.")
+            setTimeout(() => router.push('/mypage'), 2000)
+            return
+          } else {
+            throw new Error(`HTTP error! status: ${response.status}`)
+          }
         }
         
         const data = await response.json()
         
         if (data && data.code === "POST201" && data.data) {
           const post: PostData = data.data
+          
+          console.log("권한 체크:", {
+            currentUserEmail: currentUserEmail,
+            postUserEmail: post.userEmail,
+            isAuthor: currentUserEmail === post.userEmail
+          })
+          
+          // 권한 체크: JWT 이메일과 게시글 작성자 이메일 비교
+          if (currentUserEmail !== post.userEmail) {
+            setError("본인이 작성한 게시글만 수정할 수 있습니다.")
+            setTimeout(() => router.push('/mypage'), 2000)
+            return
+          }
           
           // 날짜 파싱 (ISO 형식에서 date와 time 분리)
           const dateObj = new Date(post.date)
@@ -202,7 +282,13 @@ export default function EditPostPage() {
         }
       } catch (error) {
         console.error("데이터 로드 실패:", error)
-        setError("게시글 데이터를 불러오는데 실패했습니다.")
+        if (error instanceof Error && error.message.includes('인증')) {
+          setError("로그인이 필요합니다.")
+          router.push('/login')
+        } else {
+          setError("게시글 데이터를 불러오는데 실패했습니다.")
+          setTimeout(() => router.push('/mypage'), 2000)
+        }
       } finally {
         setLoadingData(false)
       }
@@ -211,7 +297,7 @@ export default function EditPostPage() {
     if (postId) {
       fetchPostData()
     }
-  }, [postId])
+  }, [postId, router])
 
   const handleParticipantChange = (increment: boolean) => {
     setFormData((prev) => ({
@@ -224,11 +310,6 @@ export default function EditPostPage() {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      // 파일 크기 체크 (5MB 제한)
-      if (file.size > 5 * 1024 * 1024) {
-        setError("이미지 파일 크기는 5MB 이하여야 합니다.")
-        return
-      }
 
       // 파일 타입 체크
       if (!file.type.startsWith('image/')) {
@@ -263,16 +344,6 @@ export default function EditPostPage() {
     }
   }
 
-  // 이미지 파일을 Base64로 변환하는 함수
-  const convertImageToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = reject
-      reader.readAsDataURL(file)
-    })
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -299,10 +370,7 @@ export default function EditPostPage() {
         town: formData.town,
       }
 
-      console.log("수정 요청 데이터:", {
-        ...postData,
-        imageUrl: finalImageUrl ? (finalImageUrl.length > 100 ? `${finalImageUrl.substring(0, 100)}... (${finalImageUrl.length} chars)` : finalImageUrl) : null
-      });
+      console.log("수정 요청 데이터:", postData);
 
       if (!postData.town || postData.town.trim() === "") {
         setError("지역(동네)을 선택해주세요.");
@@ -336,7 +404,7 @@ export default function EditPostPage() {
         }
         
         setSuccessMessage("모집글이 성공적으로 수정되었습니다!");
-        setTimeout(() => router.push("/mypage"), 1000);
+        setTimeout(() => router.push("/mypage/my-posts"), 1000);
       } else {
         // 에러 응답 처리
         let errorMessage = "모집글 수정에 실패했습니다."
@@ -356,6 +424,10 @@ export default function EditPostPage() {
             errorMessage = "이 모집글을 수정할 권한이 없습니다."
           } else if (response.status === 404) {
             errorMessage = "모집글을 찾을 수 없습니다."
+          } else if (response.status === 401) {
+            errorMessage = "로그인이 필요합니다."
+            router.push('/login')
+            return
           } else {
             errorMessage = `서버 오류 (${response.status}): ${response.statusText}`
           }
@@ -396,7 +468,47 @@ export default function EditPostPage() {
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-              <p className="text-gray-500">모집글 정보를 불러오는 중...</p>
+              <p className="text-gray-500">권한을 확인하고 모집글 정보를 불러오는 중...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // 에러 상태일 때 (권한 없음, 게시글 없음 등)
+  if (error && (error.includes('권한') || error.includes('존재하지 않는') || error.includes('본인이 작성한'))) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-500 to-cyan-400">
+        <div className="flex items-center justify-between p-4 text-white">
+          <Link href="/mypage">
+            <ArrowLeft className="w-6 h-6" />
+          </Link>
+          <h1 className="text-lg font-semibold">접근 제한</h1>
+          <div className="w-6 h-6"></div>
+        </div>
+        <div className="flex-1 bg-white rounded-t-3xl p-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                <span className="text-2xl">🚫</span>
+              </div>
+              <p className="text-red-600 text-lg font-medium mb-2">{error}</p>
+              <p className="text-gray-500 text-sm mb-4">잠시 후 마이페이지로 이동합니다...</p>
+              <div className="flex gap-2 justify-center">
+                <Button 
+                  onClick={() => router.push('/mypage')} 
+                  className="bg-blue-500 hover:bg-blue-600"
+                >
+                </Button>
+                <Button 
+                  onClick={() => router.back()} 
+                  variant="outline"
+                  className="border-gray-300"
+                >
+                  뒤로가기
+                </Button>
+              </div>
             </div>
           </div>
         </div>
