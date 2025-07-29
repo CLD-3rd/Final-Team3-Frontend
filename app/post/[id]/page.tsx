@@ -73,13 +73,11 @@ export default function EventDetail({}: EventDetailProps) {
     const id = Date.now()
     setToasts(prev => [...prev, { id, message, type }])
     
-    // 3초 후 자동 제거
     setTimeout(() => {
       setToasts(prev => prev.filter(toast => toast.id !== id))
     }, 3000)
   }
 
-  // 토스트 메시지 제거
   const removeToast = (id: number) => {
     setToasts(prev => prev.filter(toast => toast.id !== id))
   }
@@ -172,35 +170,6 @@ export default function EventDetail({}: EventDetailProps) {
         alert('링크가 복사되었습니다!')
       } catch (error) {
         console.error('클립보드 복사 실패:', error)
-      }
-    }
-  }
-
-  const toggleNotification = async () => {
-    try {
-      console.log("알림 설정 토글...")
-      
-      // 프로필 페이지와 동일한 방식으로 API 호출
-      const response = await makeAuthenticatedRequest(`http://localhost:8080/api/posts/${postId}/notification`, {
-        method: 'POST'
-      })
-      
-      // API 성공 여부와 상관없이 로컬 상태 변경
-      setIsNotifying(!isNotifying)
-      if (!isNotifying) {
-        alert('빈자리가 나면 알려드릴게요!')
-      } else {
-        alert('알림이 해제되었습니다.')
-      }
-      console.log("알림 상태 변경됨:", !isNotifying)
-    } catch (error) {
-      console.error('알림 설정 실패:', error)
-      // API 실패해도 UI는 변경 (로컬 상태)
-      setIsNotifying(!isNotifying)
-      if (!isNotifying) {
-        alert('빈자리가 나면 알려드릴게요!')
-      } else {
-        alert('알림이 해제되었습니다.')
       }
     }
   }
@@ -383,7 +352,6 @@ export default function EventDetail({}: EventDetailProps) {
   const getSportName = (sport: string) => {
     const sportNames: { [key: string]: string } = {
       'FOOTBALL': '축구',
-      'SOCCER': '축구',
       'TENNIS': '테니스',
       'TABLE_TENNIS': '탁구',
       'BASKETBALL': '농구',
@@ -396,7 +364,6 @@ export default function EventDetail({}: EventDetailProps) {
   const getSportIcon = (sport: string) => {
     const icons: { [key: string]: string } = {
       'FOOTBALL': '⚽',
-      'SOCCER': '⚽',
       'TENNIS': '🎾',
       'TABLE_TENNIS': '🏓',
       'BASKETBALL': '🏀',
@@ -462,7 +429,6 @@ export default function EventDetail({}: EventDetailProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 토스트 메시지들 */}
       {toasts.map((toast) => (
         <Toast
           key={toast.id}
@@ -472,7 +438,7 @@ export default function EventDetail({}: EventDetailProps) {
         />
       ))}
 
-      {/* Header - 기본 파란색 헤더로 복원 */}
+      {/* Header */}
       <div className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white p-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -619,11 +585,11 @@ export default function EventDetail({}: EventDetailProps) {
               {/* 구장 이미지*/}
               {post.imageUrl && (
                 <div className="mb-6">
-                  <div className="relative overflow-hidden rounded-xl shadow-sm bg-gray-100 max-w-2xl mx-auto">
+                  <div className="relative overflow-hidden rounded-xl shadow-sm bg-gray-100 max-w-5xl mx-auto">
                     <img 
                       src={post.imageUrl} 
                       alt="구장 사진" 
-                      className="w-full h-80 object-cover"
+                      className="w-full h-auto object-contain"
                       style={{
                         imageRendering: 'high-quality',
                         imageRendering: '-webkit-optimize-contrast',
@@ -636,7 +602,6 @@ export default function EventDetail({}: EventDetailProps) {
                         img.style.filter = 'contrast(1.05) brightness(1.02) saturate(1.1)';
                       }}
                       onError={(e) => {
-                        // 이미지 로드 실패 시 대체 이미지 또는 플레이스홀더
                         const img = e.target as HTMLImageElement;
                         img.style.display = 'none';
                         const placeholder = img.parentElement?.querySelector('.image-placeholder');
@@ -655,7 +620,7 @@ export default function EventDetail({}: EventDetailProps) {
                 </div>
               )}
               
-              
+              {/* 
               <div className="grid grid-cols-4 gap-4 mb-4">
                 {[
                   { icon: "☂️", text: "그늘막" },
@@ -669,7 +634,7 @@ export default function EventDetail({}: EventDetailProps) {
                   </div>
                 ))}
               </div>
-            
+              */}
 
           </CardContent>
         </Card>)}
