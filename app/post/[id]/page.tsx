@@ -575,10 +575,6 @@ export default function EventDetail({}: EventDetailProps) {
               {post.cost.toLocaleString()}원
             </div>
             <div className="text-gray-600 mb-4">/ 1인당</div>
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
-              <span className="text-red-800 text-sm">매치 시작 10분 전 신청이 마감돼요</span>
-            </div>
           </CardContent>
         </Card>
 
@@ -615,78 +611,72 @@ export default function EventDetail({}: EventDetailProps) {
         )}
 
         {/* 구장 정보 */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <h3 className="text-xl font-semibold mb-4">구장 정보</h3>
-            
-            {/* 구장 이미지 - 크기 더 증가 */}
-            {post.imageUrl && (
-              <div className="mb-6">
-                <div className="relative overflow-hidden rounded-xl shadow-sm bg-gray-100 max-w-2xl mx-auto">
-                  <img 
-                    src={post.imageUrl} 
-                    alt="구장 사진" 
-                    className="w-full h-80 object-cover"
-                    style={{
-                      imageRendering: 'high-quality',
-                      imageRendering: '-webkit-optimize-contrast',
-                      imageRendering: 'crisp-edges'
-                    }}
-                    loading="lazy"
-                    onLoad={(e) => {
-                      // 이미지 로드 완료 시 선명도 향상
-                      const img = e.target as HTMLImageElement;
-                      img.style.filter = 'contrast(1.05) brightness(1.02) saturate(1.1)';
-                    }}
-                    onError={(e) => {
-                      // 이미지 로드 실패 시 대체 이미지 또는 플레이스홀더
-                      const img = e.target as HTMLImageElement;
-                      img.style.display = 'none';
-                      const placeholder = img.parentElement?.querySelector('.image-placeholder');
-                      if (placeholder) {
-                        (placeholder as HTMLElement).style.display = 'flex';
-                      }
-                    }}
-                  />
-                  <div className="image-placeholder absolute inset-0 hidden items-center justify-center bg-gray-200 text-gray-500">
-                    <div className="text-center">
-                      <span className="text-3xl mb-2 block">🏟️</span>
-                      <span className="text-sm">구장 이미지를 불러올 수 없습니다</span>
+        {post.imageUrl && (
+          <Card className="mb-6">
+            <CardContent className="p-6">
+              <h3 className="text-xl font-semibold mb-4">구장 정보</h3>
+              
+              {/* 구장 이미지*/}
+              {post.imageUrl && (
+                <div className="mb-6">
+                  <div className="relative overflow-hidden rounded-xl shadow-sm bg-gray-100 max-w-2xl mx-auto">
+                    <img 
+                      src={post.imageUrl} 
+                      alt="구장 사진" 
+                      className="w-full h-80 object-cover"
+                      style={{
+                        imageRendering: 'high-quality',
+                        imageRendering: '-webkit-optimize-contrast',
+                        imageRendering: 'crisp-edges'
+                      }}
+                      loading="lazy"
+                      onLoad={(e) => {
+                        // 이미지 로드 완료 시 선명도 향상
+                        const img = e.target as HTMLImageElement;
+                        img.style.filter = 'contrast(1.05) brightness(1.02) saturate(1.1)';
+                      }}
+                      onError={(e) => {
+                        // 이미지 로드 실패 시 대체 이미지 또는 플레이스홀더
+                        const img = e.target as HTMLImageElement;
+                        img.style.display = 'none';
+                        const placeholder = img.parentElement?.querySelector('.image-placeholder');
+                        if (placeholder) {
+                          (placeholder as HTMLElement).style.display = 'flex';
+                        }
+                      }}
+                    />
+                    <div className="image-placeholder absolute inset-0 hidden items-center justify-center bg-gray-200 text-gray-500">
+                      <div className="text-center">
+                        <span className="text-3xl mb-2 block">🏟️</span>
+                        <span className="text-sm">구장 이미지를 불러올 수 없습니다</span>
+                      </div>
                     </div>
                   </div>
                 </div>
+              )}
+              
+              
+              <div className="grid grid-cols-4 gap-4 mb-4">
+                {[
+                  { icon: "☂️", text: "그늘막" },
+                  { icon: "🚿", text: "샤워실" },
+                  { icon: "🚗", text: "유료주차" },
+                  { icon: "🧊", text: "음료 판매" }
+                ].map((item, idx) => (
+                  <div key={idx} className="bg-gray-50 border rounded-lg p-3 flex flex-col items-center gap-2 text-center">
+                    <span className="text-lg">{item.icon}</span>
+                    <span className="text-sm font-medium text-gray-800">{item.text}</span>
+                  </div>
+                ))}
               </div>
-            )}
             
-            <div className="grid grid-cols-4 gap-4 mb-4">
-              {[
-                { icon: "☂️", text: "그늘막" },
-                { icon: "🚿", text: "샤워실" },
-                { icon: "🚗", text: "유료주차" },
-                { icon: "🧊", text: "음료 판매" }
-              ].map((item, idx) => (
-                <div key={idx} className="bg-gray-50 border rounded-lg p-3 flex flex-col items-center gap-2 text-center">
-                  <span className="text-lg">{item.icon}</span>
-                  <span className="text-sm font-medium text-gray-800">{item.text}</span>
-                </div>
-              ))}
-            </div>
 
-            <div className="bg-gray-50 border rounded-lg p-4">
-              <h4 className="font-semibold text-gray-800 mb-3">구장 특이사항</h4>
-              <div className="text-sm text-gray-600 leading-relaxed">
-                <strong>■ 주차:</strong> 2대까지 2시간 무료 (매니저에게 주증)<br />
-                그 외 30분 당 1천원<br /><br />
-                <strong>■ 흡연:</strong> 지정장소에서만 흡연<br /><br />
-                <strong>■ 기타</strong><br />
-                화장실: 자판기 옆
-              </div>
-            </div>
           </CardContent>
-        </Card>
-      </div>
+        </Card>)}
+    </div>
+              
 
-      {/* Bottom Navigation - 메인 페이지와 동일 */}
+      {/* Bottom Navigation  */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
         <div className="flex justify-around">
           <Link href="/" className="flex flex-col items-center gap-1 text-gray-400">
