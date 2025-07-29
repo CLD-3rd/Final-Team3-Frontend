@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Minus, Plus } from "lucide-react"
+import { ArrowLeft, Minus, Plus, Upload, X } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
@@ -20,7 +20,7 @@ const townOptions = [
   { label: "인천", value: "INCHEON" },
   { label: "광주", value: "GWANGJU" },
   { label: "울산", value: "ULSAN" },
-  { label: "부산", value: "BUSAN" },
+
   { label: "세종", value: "SEJONG" },
   { label: "충남", value: "CHUNGNAM" },
   { label: "충북", value: "CHUNGBUK" },
@@ -65,12 +65,51 @@ export default function CreatePostPage() {
   const [error, setError] = useState("")
   const [successMessage, setSuccessMessage] = useState("");
   const [townModalOpen, settownModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   const handleParticipantChange = (increment: boolean) => {
     setFormData((prev) => ({
       ...prev,
       maxParticipants: increment ? Math.min(prev.maxParticipants + 1, 20) : Math.max(prev.maxParticipants - 1, 1),
     }))
+  }
+
+  // 이미지 파일 선택 처리
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // 파일 타입 체크
+      if (!file.type.startsWith('image/')) {
+        setError("이미지 파일만 업로드 가능합니다.")
+        return
+      }
+
+      setSelectedImage(file)
+      
+      // 미리보기 생성
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const result = e.target?.result as string
+        setImagePreview(result)
+      }
+      reader.readAsDataURL(file)
+      
+      setError("")
+    }
+  }
+
+  // 이미지 제거
+  const handleImageRemove = () => {
+    setSelectedImage(null)
+    setImagePreview(null)
+    
+    // 파일 input 초기화
+    const fileInput = document.getElementById('image-upload') as HTMLInputElement
+    if (fileInput) {
+      fileInput.value = ''
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -82,30 +121,31 @@ export default function CreatePostPage() {
     console.log("formData.town 값:", formData.town);
 
     try {
-    const isoDateTime = `${formData.date}T${formData.time}`;
-    const selectedTownObj = townOptions.find(opt => opt.label === formData.town);
-    const townValue = selectedTownObj ? selectedTownObj.value : "";
+      const isoDateTime = `${formData.date}T${formData.time}`;
+      const selectedTownObj = townOptions.find(opt => opt.label === formData.town);
+      const townValue = selectedTownObj ? selectedTownObj.value : "";
 
-    const postData = {
-      title: formData.title,
-      description: formData.content,
-      location: formData.location,
-      status: "OPEN",
-      town: formData.town,
-      sports: formData.sport, // ENUM("FOOTBALL" 등)
-      gender: formData.gender,
-      cost: Number.parseInt(formData.cost) || 0,
-      maxPeople: formData.maxParticipants,
-      date: isoDateTime,
-    }
+      const postData = {
+        title: formData.title,
+        description: formData.content,
+        location: formData.location,
+        status: "OPEN",
+        town: formData.town,
+        sports: formData.sport, 
+        gender: formData.gender,
+        cost: Number.parseInt(formData.cost) || 0,
+        maxPeople: formData.maxParticipants,
+        date: isoDateTime,
+        imageUrl: null, // 일단 null로 전송 (S3 연동 전까지)
+      }
 
-    console.log("제출 직전 town 값:", postData.town, typeof postData.town, postData);
-    if (!postData.town || postData.town.trim() === "") {
-      setError("지역(동네)을 입력해주세요.");
-      return;
-  }
+      console.log("제출 직전 town 값:", postData.town, typeof postData.town, postData);
+      if (!postData.town || postData.town.trim() === "") {
+        setError("지역(동네)을 입력해주세요.");
+        return;
+      }
 
-    const response = await apiClient.createPost(postData)
+      const response = await apiClient.createPost(postData)
       if (response.code === "POST200") {
         console.log("등록 성공! 메시지:", response.message);
         setSuccessMessage(response.message ?? "등록 성공");
@@ -340,6 +380,72 @@ export default function CreatePostPage() {
               />
               <span className="text-gray-600">원</span>
             </div>
+          </div>
+
+          {/* Image Upload */}
+          <div>
+            <Label className="text-gray-700 font-medium mb-2 block">구장 이미지</Label>
+            
+            {/* 이미지 미리보기 */}
+            {imagePreview && (
+              <div className="mb-4 relative">
+                <img 
+                  src={imagePreview} 
+                  alt="구장 이미지 미리보기" 
+                  className="w-full h-48 object-cover rounded-lg border border-gray-200"
+                  onError={(e) => {
+                    const img = e.target as HTMLImageElement
+                    img.style.display = 'none'
+                    setError("이미지를 불러올 수 없습니다.")
+                  }}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  className="absolute top-2 right-2"
+                  onClick={handleImageRemove}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+
+            {/* 파일 업로드 */}
+            <div className="flex items-center gap-3">
+              <input
+                id="image-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="flex items-center gap-2"
+                onClick={() => document.getElementById('image-upload')?.click()}
+                disabled={uploadingImage}
+              >
+                <Upload className="w-4 h-4" />
+                이미지 선택
+              </Button>
+              {imagePreview && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleImageRemove}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  이미지 제거
+                </Button>
+              )}
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              JPG, PNG 파일만 업로드 가능
+              <br />
+            </p>
           </div>
 
           {/* Description */}
