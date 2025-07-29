@@ -1,5 +1,7 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+import { Pencil } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -77,7 +79,7 @@ function MyPostsContentComponent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
-
+  const router = useRouter()
   const getAuthToken = () => {
     return localStorage.getItem("auth_token") || localStorage.getItem("accessToken")
   }
@@ -412,6 +414,15 @@ function MyPostsContentComponent() {
                   >
                     {getStatusText(post.status)}
                   </Badge>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="ml-auto text-gray-400 hover:text-blue-500"
+                    onClick={() => router.push(`/edit-post/${post.postId}`)}
+                  >
+                    <Pencil className="w-5 h-5" />
+                    <span className="sr-only">수정</span>
+                  </Button>
                 </div>
 
                 <h4 className="font-semibold text-gray-900 mb-3">{post.title}</h4>

@@ -20,7 +20,6 @@ const townOptions = [
   { label: "인천", value: "INCHEON" },
   { label: "광주", value: "GWANGJU" },
   { label: "울산", value: "ULSAN" },
-
   { label: "세종", value: "SEJONG" },
   { label: "충남", value: "CHUNGNAM" },
   { label: "충북", value: "CHUNGBUK" },
