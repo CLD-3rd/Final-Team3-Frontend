@@ -143,15 +143,16 @@ class ApiClient {
     return response.data
   }
 
-  async createPost(data: CreatePostData): Promise<Post> {
+  async createPost(data: CreatePostData): Promise<ApiResponse<Post>> {
     const response = await this.request<ApiResponse<Post>>("/posts", {
       method: "POST",
+      credentials: "include",
       body: JSON.stringify(data),
     })
-    if (!response.data) {
+    if (response.code !== "POST200") {
       throw new Error("Failed to create post")
     }
-    return response.data
+    return response
   }
 
   async updatePost(id: number, data: Partial<CreatePostData>): Promise<Post> {

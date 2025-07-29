@@ -11,20 +11,40 @@ import { ArrowLeft, Minus, Plus } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
+import { Search } from "lucide-react";
+
+const townOptions = [
+  { label: "서울", value: "SEOUL" },
+  { label: "경기", value: "GYEONGGI" },
+  { label: "대구", value: "DAEGU" },
+  { label: "인천", value: "INCHEON" },
+  { label: "광주", value: "GWANGJU" },
+  { label: "울산", value: "ULSAN" },
+  { label: "부산", value: "BUSAN" },
+  { label: "세종", value: "SEJONG" },
+  { label: "충남", value: "CHUNGNAM" },
+  { label: "충북", value: "CHUNGBUK" },
+  { label: "전북", value: "JEONBUK" },
+  { label: "전남", value: "JEONNAM" },
+  { label: "경북", value: "GYEONGBUK" },
+  { label: "경남", value: "GYEONGNAM" },
+  { label: "제주", value: "JEJU" },
+  { label: "대전", value: "DAEJEON" },
+];
 
 const sports = [
-  { id: "soccer", name: "축구", icon: "⚽" },
-  { id: "tennis", name: "테니스", icon: "🎾" },
-  { id: "pingpong", name: "탁구", icon: "🏓" },
-  { id: "basketball", name: "농구", icon: "🏀" },
-  { id: "badminton", name: "배드민턴", icon: "🏸" },
-  { id: "volleyball", name: "배구", icon: "🏐" },
+  { id: "FOOTBALL", name: "축구", icon: "⚽" },
+  { id: "TENNIS", name: "테니스", icon: "🎾" },
+  { id: "TABLE_TENNIS", name: "탁구", icon: "🏓" },
+  { id: "BASKETBALL", name: "농구", icon: "🏀" },
+  { id: "BADMINTON", name: "배드민턴", icon: "🏸" },
+  { id: "VOLLEYBALL", name: "배구", icon: "🏐" },
 ]
 
 const genderOptions = [
-  { id: "all", name: "남녀 모두" },
-  { id: "male", name: "남성만" },
-  { id: "female", name: "여성만" },
+  { id: "ALL", name: "남녀 모두" },
+  { id: "MALE", name: "남성만" },
+  { id: "FEMALE", name: "여성만" },
 ]
 
 export default function CreatePostPage() {
@@ -35,13 +55,16 @@ export default function CreatePostPage() {
     location: "",
     date: "",
     time: "",
+    town: "",
     maxParticipants: 4,
-    gender: "" as "all" | "male" | "female" | "",
+    gender: "ALL" as "ALL" | "MALE" | "FEMALE",
     cost: "",
     content: "",
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [successMessage, setSuccessMessage] = useState("");
+  const [townModalOpen, settownModalOpen] = useState(false);
 
   const handleParticipantChange = (increment: boolean) => {
     setFormData((prev) => ({
@@ -54,27 +77,47 @@ export default function CreatePostPage() {
     e.preventDefault()
     setLoading(true)
     setError("")
+    setSuccessMessage("")
+
+    console.log("formData.town 값:", formData.town);
 
     try {
-      const postData = {
-        title: formData.title,
-        content: formData.content,
-        sport: formData.sport,
-        location: formData.location,
-        date: formData.date,
-        time: formData.time,
-        maxParticipants: formData.maxParticipants,
-        cost: Number.parseInt(formData.cost) || 0,
-        gender: formData.gender as "all" | "male" | "female",
-      }
+    const isoDateTime = `${formData.date}T${formData.time}`;
+    const selectedTownObj = townOptions.find(opt => opt.label === formData.town);
+    const townValue = selectedTownObj ? selectedTownObj.value : "";
 
-      await apiClient.createPost(postData)
-      router.push("/my-posts")
+    const postData = {
+      title: formData.title,
+      description: formData.content,
+      location: formData.location,
+      status: "OPEN",
+      town: formData.town,
+      sports: formData.sport, // ENUM("FOOTBALL" 등)
+      gender: formData.gender,
+      cost: Number.parseInt(formData.cost) || 0,
+      maxPeople: formData.maxParticipants,
+      date: isoDateTime,
+    }
+
+    console.log("제출 직전 town 값:", postData.town, typeof postData.town, postData);
+    if (!postData.town || postData.town.trim() === "") {
+      setError("지역(동네)을 입력해주세요.");
+      return;
+  }
+
+    const response = await apiClient.createPost(postData)
+      if (response.code === "POST200") {
+        console.log("등록 성공! 메시지:", response.message);
+        setSuccessMessage(response.message ?? "등록 성공");
+        setTimeout(() => router.push("/my-posts"), 1000);
+      } else {
+        setError("모집글 등록에 실패했습니다.");
+      }
     } catch (error) {
-      setError("모집글 등록 중 오류가 발생했습니다.")
-      console.error("Create post error:", error)
+      setError("모집글 등록 중 오류가 발생했습니다.");
+      console.error("Create post error:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
@@ -85,10 +128,9 @@ export default function CreatePostPage() {
         <Link href="/my-posts">
           <ArrowLeft className="w-6 h-6" />
         </Link>
-        <h1 className="text-lg font-semibold">운동 모집하기</h1>
-        <Button variant="ghost" className="text-white hover:bg-white/20">
-          임시저장
-        </Button>
+        <div className="flex-1 flex justify-center">
+          <h1 className="text-lg font-semibold">운동 모집하기</h1>
+        </div>
       </div>
 
       <div className="flex-1 bg-white rounded-t-3xl p-6 space-y-6">
@@ -135,13 +177,71 @@ export default function CreatePostPage() {
             </div>
           </div>
 
-          {/* Location */}
+          <div>
+            <Label className="text-gray-700 font-medium mb-2 block">
+              지역 <span className="text-red-500">*</span>
+            </Label>
+            <div className="relative flex items-center">
+              <Input
+                placeholder="지역을 선택하세요"
+                value={
+                  townOptions.find(opt => opt.value === formData.town)?.label || ""
+                }
+                readOnly
+                className="bg-gray-50 border-gray-200 pr-10 "
+                required
+              />
+              <Button
+                type="button"
+                size="icon"
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-50 border border-gray-200 text-gray-700 shadow-none hover:bg-gray-100"
+                onClick={() => settownModalOpen(true)}
+              >
+                <Search className="w-5 h-5" />
+              </Button>
+            </div>
+            {/* 지역 선택 모달 */}
+            {townModalOpen && (
+              <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30">
+                <div className="bg-white rounded-2xl p-6 min-w-[320px] max-w-[90vw]">
+                  <h3 className="text-lg font-semibold mb-4">지역 선택</h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {townOptions.map((option) => (
+                      <Button
+                        key={option.value}
+                        type="button"
+                        variant={formData.town === option.value ? "default" : "outline"}
+                        className={formData.town === option.value ? "bg-blue-500 text-white" : ""}
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, town: option.value }));
+                          settownModalOpen(false);
+                          console.log("선택된 town:", option.value);
+                        }}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full mt-4"
+                    onClick={() => settownModalOpen(false)}
+                  >
+                    닫기
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 위치(상세 입력) */}
           <div>
             <Label className="text-gray-700 font-medium mb-2 block">
               위치 <span className="text-red-500">*</span>
             </Label>
             <Input
-              placeholder="지역명 또는 장소명을 입력하세요"
+              placeholder="상세 장소명을 입력하세요 (예: OO구 OO로 OO체육관, 공원 등)"
               value={formData.location}
               onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
               className="bg-gray-50 border-gray-200"
@@ -214,7 +314,7 @@ export default function CreatePostPage() {
                   key={option.id}
                   type="button"
                   variant={formData.gender === option.id ? "default" : "outline"}
-                  onClick={() => setFormData((prev) => ({ ...prev, gender: option.id as "all" | "male" | "female" }))}
+                  onClick={() => setFormData((prev) => ({ ...prev, gender: option.id as "ALL" | "MALE" | "FEMALE" }))}
                   className={`h-12 ${
                     formData.gender === option.id
                       ? "bg-blue-500 text-white border-blue-500"
@@ -256,7 +356,13 @@ export default function CreatePostPage() {
             />
             <div className="text-right text-sm text-gray-500 mt-1">{formData.content.length}/300자</div>
           </div>
-
+          
+          {/* 성공 메시지 */}
+          {successMessage && (
+            <div className="text-green-600 text-center my-2">
+              {successMessage}
+            </div>
+          )}
           {/* Submit Button */}
           <Button
             type="submit"
