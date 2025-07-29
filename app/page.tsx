@@ -18,50 +18,116 @@ const sports = [
   { id: "TABLE_TENNIS", name: "탁구", icon: "🏓" },
   { id: "BASKETBALL", name: "농구", icon: "🏀" },
   { id: "BADMINTON", name: "배드민턴", icon: "🏸" },
+  { id: "VOLLEYBALL", name: "배구", icon: "🏐" },
 ]
 
-const regions = ["서울", "경기", "대전", "대구", "부산", "광주", "인천", "울산"]
-const genders = ["전체", "남자", "여자"]
+const regions = ["서울", "경기", "대전", "대구", "인천", "울산", "광주", "세종", "충북", "충남", "경북", "경남", "전북", "전남", "제주"]
+const genders = ["남녀 모두", "남자", "여자"]
+
+const genderMap = {
+  "남여 모두": undefined,
+  "남자": "MALE",
+  "여자": "FEMALE",
+};
+
+function formatTimeToKorean12Hour(dateString: string) {
+  if (!dateString) return "";
+  let fixedDateString = dateString.replace(" ", "T");
+  if (fixedDateString.length === 16) fixedDateString += ":00";
+  const dateObj = new Date(fixedDateString);
+  if (isNaN(dateObj.getTime())) return "";
+  let hours = dateObj.getHours();
+  const minutes = dateObj.getMinutes();
+  const isAM = hours < 12;
+  let period = isAM ? "오전" : "오후";
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+  return minutes === 0
+    ? `${period} ${hours}시`
+    : `${period} ${hours}시 ${minutes}분`;
+}
+
+function extractMainRegion(town: string): string | undefined {
+  if (!town) return undefined;
+  return regions.find(region => town.startsWith(region));
+}
+
 
 export default function MainPage() {
-  const [sortBy, setSortBy] = useState("popular")
-  const [selectedSport, setSelectedSport] = useState("all")
+  const [sortBy, setSortBy] = useState("recent")
+  const [selectedSport, setSelectedSport] = useState("전체")
   const [searchQuery, setSearchQuery] = useState("")
-  const [viewMode, setViewMode] = useState("list")
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const [favorites, setFavorites] = useState<number[]>([])
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const [selectedRegion, setSelectedRegion] = useState("내 지역")
-  const [selectedGender, setSelectedGender] = useState("성별")
-  const [showRegionDropdown, setShowRegionDropdown] = useState(false)
-  const [showGenderDropdown, setShowGenderDropdown] = useState(false)
+  const [selectedRegion, setSelectedRegion] = useState("모든 지역")
+  const [selectedGender, setSelectedGender] = useState("남녀 모두")
+  const [showGenderModal, setShowGenderModal] = useState(false);
+  const [tempGender, setTempGender] = useState(selectedGender);
+  const [showRegionModal, setShowRegionModal] = useState(false); 
+  const [tempRegion, setTempRegion] = useState(selectedRegion);  
+  const [myRegion, setMyRegion] = useState<string>("");
+  const [nickname, setNickname] = useState<string>("");
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-
-
-  const [nickname, setNickname] = useState(null);
   
+  useEffect(() => {
+    setSelectedSport("전체");
+    setSelectedRegion("모든 지역");
+    setSelectedGender("성별");
+    setSelectedDate(null);
+    setViewMode("list");
+  }, []);
 
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const res = await apiClient.getProfile(); // town, nickName(또는 nickname) 모두 받아옴
+        setMyRegion(res.town || "");
+        setNickname(res.nickName || ""); 
+      } catch (error) {
+        setMyRegion("");
+        setNickname("");
+      }
+    };
+    fetchUserProfile();
+  }, []);
 
+  useEffect(() => {
+  apiClient.getPosts().then(setPosts); // 전체 모집글 또는 월별 모집글 불러오기
+  }, []);
 
+  // 찜한 모집글 초기 세팅
+  useEffect(() => {
+    const fetchMyFollows = async () => {
+      try {
+        const ids = await apiClient.getMyFollows();
+        setFavorites(ids); // 내가 찜한 모집글 postId만 저장
+      } catch (error) {
+        setFavorites([]);
+      }
+    };
+    fetchMyFollows();
+  }, []);
+  
   useEffect(() => {
     fetchPosts()
     fetchFavorites()
-  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender])
+  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate])
 
   const fetchPosts = async () => {
     try {
       setLoading(true)
       setError("")
-      const params = {
-        sport: selectedSport !== "all" ? selectedSport : undefined,
+      const params = { // 벡엔드로 보내는 파라미터들
+        sports: selectedSport !== "전체" ? selectedSport : undefined,
         sortBy,
         search: searchQuery || undefined,
-        region: selectedRegion !== "내 지역" ? selectedRegion : undefined,
-        gender: selectedGender !== "성별" ? selectedGender : undefined,
+        gender: genderMap[selectedGender as keyof typeof genderMap],
         date: selectedDate || undefined,
       }
-      const posts = await apiClient.getPosts(params);  // posts만 받아옴!
+      const posts = await apiClient.getPosts(params);  
       setPosts(posts);
     } catch (error) {
       console.error("Failed to fetch posts:", error)
@@ -74,47 +140,172 @@ export default function MainPage() {
 
   const fetchFavorites = async () => {
     try {
-      const data = await apiClient.getFavorites()
-      setFavorites(data?.map((fav: any) => fav.postId) || [])
+      const ids = await apiClient.getMyFollows()
+      setFavorites(ids);
     } catch (error) {
       console.error("Failed to fetch favorites:", error)
-      setFavorites([])
+      setFavorites([]);
     }
   }
 
   const toggleFavorite = async (postId: number) => {
     try {
-      if (favorites.includes(postId)) {
-        await apiClient.removeFavorite(postId)
-        setFavorites((prev) => prev.filter((id) => id !== postId))
-      } else {
-        await apiClient.addFavorite(postId)
-        setFavorites((prev) => [...prev, postId])
-      }
-    } catch (error) {
-      console.error("Failed to toggle favorite:", error)
+    const res = await apiClient.toggleFollow(postId);
+    console.log("toggleFollow 응답:", res);
+    if (res.data?.followed) {
+      setFavorites((prev) => 
+        prev.includes(Number(postId)) ? prev : [...prev, Number(postId)]
+      );
+    } else {
+      setFavorites((prev) => prev.filter((id) => id !== Number(postId)));
     }
+  } catch (error) {
+    alert("찜 상태 변경에 실패했습니다.");  
+    console.error( error);
   }
+}
 
   const handleDateSelect = (date: string) => {
     setSelectedDate(date)
     setViewMode("list")
   }
+  const now = new Date();
+  const myMainRegion = extractMainRegion(myRegion);
 
-  const handleRegionSelect = (region: string) => {
-    setSelectedRegion(region)
-    setShowRegionDropdown(false)
-  }
+  const filteredPosts = posts.filter(post => {
+    /*tempRegion === "모든 지역"
+      ? true
+      : tempRegion === "내 지역"
+        ? extractMainRegion(post.town) === myMainRegion
+        : post.town === tempRegion*/
+    const regionMatch = tempRegion === "모든 지역"
+      ? true
+      : tempRegion === "내 지역"
+        ? extractMainRegion(post.town) === myMainRegion
+        : post.town === tempRegion;
 
-  const handleGenderSelect = (gender: string) => {
-    setSelectedGender(gender)
-    setShowGenderDropdown(false)
-  }
+    if (!regionMatch) return false;
 
-  const filteredPosts = selectedDate ? posts.filter((post) => post.date === selectedDate) : posts
+    // 2. 날짜 필터 + 현재 시각 이후 모집글만
+    if (selectedDate) {
+      const postDateStr = post.date?.split("T")[0];
+      if (postDateStr !== selectedDate) return false;
+
+      // "YYYY-MM-DDTHH:mm:ss" 또는 "YYYY-MM-DD HH:mm:ss"
+      if (post.date) {
+        const postDateTime = new Date(post.date.replace(" ", "T"));
+        // 현재 시각 이후만 남김
+        if (postDateTime <= now) return false;
+      }
+    }
+    // selectedDate가 없으면 모두 통과
+    return true;
+  });
+
+  const sortedPosts = (() => {
+    if (sortBy === "popular") {
+      return [...filteredPosts].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+    }
+    if (sortBy === "recent") {
+      return [...filteredPosts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+    return filteredPosts;
+  })();
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {showGenderModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-xl shadow-xl w-80 p-6 relative">
+            {/* 상단 타이틀 & 닫기 버튼 */}
+            <div className="flex justify-between items-center mb-6">
+              <span className="font-bold text-lg">성별</span>
+              <button onClick={() => setShowGenderModal(false)}>
+                <span className="text-2xl">&times;</span>
+              </button>
+            </div>
+            {/* 성별 리스트 */}
+            <div className="space-y-4">
+              {genders.map((gender) => (
+                <label key={gender} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={tempGender === gender}
+                    onChange={() => setTempGender(gender)}
+                    className="accent-blue-500"
+                  />
+                  <span>{gender}</span>
+                </label>
+              ))}
+            </div>
+            {/* 적용하기 버튼 */}
+            <button
+              className="w-full mt-6 bg-blue-600 text-white rounded-lg py-3 font-bold"
+              onClick={() => {
+                setSelectedGender(tempGender);
+                setShowGenderModal(false);
+              }}
+            >
+              적용하기
+            </button>
+          </div>
+        </div>
+      )}
+      {showRegionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-xl shadow-xl w-80 p-6 relative">
+            <div className="flex justify-between items-center mb-6">
+              <span className="font-bold text-lg">지역 선택</span>
+              <button onClick={() => setShowRegionModal(false)}>
+                <span className="text-2xl">&times;</span>
+              </button>
+            </div>
+            <div className="space-y-4">
+              {/* 모든 지역 */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={tempRegion === "모든 지역"}
+                  onChange={() => setTempRegion("모든 지역")}
+                  className="accent-blue-500"
+                />
+                <span>모든 지역</span>
+              </label>
+              {/* 내 지역 */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={tempRegion === "내 지역"}
+                  onChange={() => setTempRegion("내 지역")}
+                  className="accent-blue-500"
+                />
+                <span>내 지역</span>
+              </label>
+              {regions.map((region) => (
+                <label key={region} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={tempRegion === region}
+                    onChange={() => setTempRegion(region)}
+                    className="accent-blue-500"
+                  />
+                  <span>{region}</span>
+                </label>
+              ))}
+            </div>
+            <button
+              className="w-full mt-6 bg-blue-600 text-white rounded-lg py-3 font-bold"
+              onClick={() => {
+                setSelectedRegion(tempRegion);
+                setShowRegionModal(false);
+              }}
+            >
+              적용하기
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white p-4">
         <div className="flex items-center justify-between mb-4">
@@ -154,61 +345,25 @@ export default function MainPage() {
       <div className="p-4 pb-20">
         {/* Filter Buttons */}
         <div className="flex gap-2 mb-6 overflow-x-auto">
-          <div className="relative">
             <Button
               variant="default"
               size="sm"
               className="bg-blue-500 text-white whitespace-nowrap flex items-center gap-1"
-              onClick={() => {
-                setShowRegionDropdown(!showRegionDropdown)
-                setShowGenderDropdown(false)
-              }}
+              onClick={() => setShowRegionModal(true)}
             >
               {selectedRegion}
               <ChevronDown className="w-3 h-3" />
             </Button>
-            {showRegionDropdown && (
-              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[120px]">
-                {regions.map((region) => (
-                  <button
-                    key={region}
-                    onClick={() => handleRegionSelect(region)}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg"
-                  >
-                    {region}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="relative">
             <Button
               variant="outline"
               size="sm"
               className="whitespace-nowrap bg-transparent flex items-center gap-1"
-              onClick={() => {
-                setShowGenderDropdown(!showGenderDropdown)
-                setShowRegionDropdown(false)
-              }}
+              onClick={() => setShowGenderModal(true)}
             >
               {selectedGender}
               <ChevronDown className="w-3 h-3" />
             </Button>
-            {showGenderDropdown && (
-              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[80px]">
-                {genders.map((gender) => (
-                  <button
-                    key={gender}
-                    onClick={() => handleGenderSelect(gender)}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg"
-                  >
-                    {gender}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          
         </div>
 
         {/* View Mode Toggle */}
@@ -233,16 +388,6 @@ export default function MainPage() {
           </Button>
         </div>
 
-        {(showRegionDropdown || showGenderDropdown) && (
-          <div
-            className="fixed inset-0 z-5"
-            onClick={() => {
-              setShowRegionDropdown(false)
-              setShowGenderDropdown(false)
-            }}
-          />
-        )}
-
         {viewMode === "calendar" ? (
           <CalendarView onDateSelect={handleDateSelect} />
         ) : (
@@ -250,29 +395,33 @@ export default function MainPage() {
             {/* Sports Categories */}
             <div className="mb-6">
               <h3 className="font-semibold mb-3">운동 종목</h3>
-              <div className="grid grid-cols-3 gap-4">
-                {sports.map((sport) => (
+              <div className="flex w-full gap-2">
+                {sports.map((sports) => (
                   <Button
-                    key={sport.id}
-                    variant={selectedSport === sport.id ? "default" : "outline"}
-                    className={`h-20 flex flex-col items-center justify-center gap-2 ${
-                      selectedSport === sport.id ? "bg-blue-500 text-white" : "bg-white border-gray-200 text-gray-700"
+                    key={sports.name}
+                    variant={selectedSport === sports.name ? "default" : "outline"}
+                    className={`flex-1 flex flex-col items-center justify-center px-1 py-10 text-xs gap-1 rounded-lg transition ${
+                      selectedSport === sports.name ? "bg-blue-500 text-white" : "bg-white border-gray-200 text-gray-700"
                     }`}
-                    onClick={() => setSelectedSport(sport.id)}
+                    onClick={() => setSelectedSport(sports.name)}
                   >
-                    <span className="text-2xl">{sport.icon}</span>
-                    <span className="text-sm">{sport.name}</span>
+                    <span className="text-2xl">{sports.icon}</span>
+                    <span className="text-sm">{sports.name}</span>
                   </Button>
                 ))}
               </div>
             </div>
+
 
             {/* Sort Options */}
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold">{selectedDate ? `${selectedDate} 모집글` : "인기 모집글"}</h3>
               <div className="flex gap-2">
                 {selectedDate && (
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedDate(null)} className="text-blue-500">
+                  <Button variant="ghost" size="sm" onClick={() => {
+                    setSelectedDate(null)
+                    setViewMode("list")
+                  }} className="text-blue-500">
                     전체보기
                   </Button>
                 )}
@@ -331,29 +480,29 @@ export default function MainPage() {
             {/* Recruitment Posts */}
             {!loading && !error && filteredPosts.length > 0 && (
               <div className="space-y-4">
-                {filteredPosts.map((post) => (
+                {sortedPosts.map((post) => (
                   <Card key={post.id} className="bg-white">
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start mb-3">
                         <Badge
                           variant="secondary"
                           className={`${
-                            post.sport === "축구"
+                            post.sports === "축구"
                               ? "bg-blue-100 text-blue-700"
-                              : post.sport === "테니스"
+                              : post.sports === "테니스"
                                 ? "bg-green-100 text-green-700"
-                                : post.sport === "탁구"
+                                : post.sports === "탁구"
                                   ? "bg-red-100 text-red-700"
                                   : "bg-orange-100 text-orange-700"
                           }`}
                         >
-                          {post.sport}
+                          {post.sports}
                         </Badge>
                         <div className="flex items-center gap-2">
                           <button onClick={() => toggleFavorite(post.id)} className="p-1">
                             <Heart
                               className={`w-5 h-5 ${
-                                favorites.includes(post.id) ? "fill-red-500 text-red-500" : "text-gray-400"
+                                favorites.includes(Number(post.id)) ? "fill-red-500 text-red-500" : "text-gray-400"
                               }`}
                             />
                           </button>
@@ -371,18 +520,19 @@ export default function MainPage() {
                       <div className="space-y-2 text-sm text-gray-600 mb-4">
                         <div className="flex items-center gap-2">
                           <MapPin className="w-4 h-4 text-red-500" />
-                          <span>{post.location}</span>
+                          <span>{post.town}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Clock className="w-4 h-4 text-blue-500" />
                           <span>
-                            {post.date} {post.time}
+                            {post.date?.split("T")[0]}{" "}
+                            {post.date && formatTimeToKorean12Hour(post.date)}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Users className="w-4 h-4 text-green-500" />
                           <span>
-                            {post.currentParticipants}/{post.maxParticipants}명
+                            {post.currentPeople}/{post.maxPeople}명
                           </span>
                         </div>
                       </div>
@@ -395,18 +545,18 @@ export default function MainPage() {
                                 key={participant.id || idx}
                                 className="w-6 h-6 bg-blue-500 rounded-full border-2 border-white flex items-center justify-center text-xs text-white"
                               >
-                                {participant.nickname?.charAt(0) || "?"}
+                                {participant.nickName?.charAt(0) || "?"}
                               </div>
                             ))}
-                            {post.currentParticipants > 4 && (
+                            {post.currentPeople > 4 && (
                               <div className="w-6 h-6 bg-gray-500 rounded-full border-2 border-white flex items-center justify-center text-xs text-white">
-                                +{post.currentParticipants - 4}
+                                +{post.currentPeople - 4}
                               </div>
                             )}
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-lg font-bold text-red-500">{post.cost}원</p>
+                        {/*  <p className="text-lg font-bold text-red-500">{post.cost}원</p> */}
                           <Link href={`/post/${post.id}`}>
                             <Button size="sm" className="bg-cyan-500 hover:bg-cyan-600 text-white">
                               상세보기
