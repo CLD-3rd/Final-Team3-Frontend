@@ -51,6 +51,26 @@ function extractMainRegion(town: string): string | undefined {
   if (!town) return undefined;
   return regions.find(region => town.startsWith(region));
 }
+/*
+// 수정한 부분
+function parseDateWithTimeZone(dateStr: string): Date {
+  // 1. 이미 Z(UTC)나 +09:00, -03:00 등이 붙어 있으면 그대로 사용
+  if (/[Zz]|([+-]\d{2}:?\d{2})$/.test(dateStr)) {
+    return new Date(dateStr);
+  }
+  // 2. 초 단위 없는 경우(예: "2025-07-29T18:30") → "2025-07-29T18:30:00+09:00"
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dateStr)) {
+    return new Date(dateStr + ":00+09:00");
+  }
+  // 3. 초 단위 있지만 타임존 없는 경우(예: "2025-07-29T18:30:00")
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(dateStr)) {
+    return new Date(dateStr + "+09:00");
+  }
+  // 4. 그 외(공백 등) - 최대한 ISO로 맞추기
+  return new Date(dateStr.replace(" ", "T") + "+09:00");
+}*/
+
+
 
 
 export default function MainPage() {

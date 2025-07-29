@@ -53,14 +53,14 @@ export interface SignupData {
 
 export interface CreatePostData {
   title: string
-  content: string
-  sport: string
+  description: string
+  sports: string
+  town: string
   location: string
   date: string
-  time: string
-  maxParticipants: number
+  maxPeople: number
   cost: number
-  gender: "all" | "male" | "female"
+  gender: "ALL" | "MALE" | "FEMALE"
 }
 
 export interface ApiResponse<T> {
