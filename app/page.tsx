@@ -70,9 +70,6 @@ function parseDateWithTimeZone(dateStr: string): Date {
   return new Date(dateStr.replace(" ", "T") + "+09:00");
 }*/
 
-
-
-
 export default function MainPage() {
   const [sortBy, setSortBy] = useState("recent")
   const [selectedSport, setSelectedSport] = useState("전체")
