@@ -155,6 +155,13 @@ export default function MainPage() {
     }
   }
 
+  useEffect(() => {
+      console.log(posts); // 받아온 데이터 형태 콘솔에서 확인 가능
+      if (posts.length > 0) {
+        console.log(posts[0].date); // 첫 번째 포스트의 date 필드
+      }
+  }, [posts]);
+  
   const fetchFavorites = async () => {
     try {
       const ids = await apiClient.getMyFollows()
@@ -347,7 +354,7 @@ export default function MainPage() {
           </p>
         </div>
 
-        {/* Search Bar */}
+        {/* Search Bar 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input
@@ -356,7 +363,7 @@ export default function MainPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-        </div>
+        </div>*/}
       </div>
 
       <div className="p-4 pb-20">
@@ -380,7 +387,19 @@ export default function MainPage() {
               {selectedGender}
               <ChevronDown className="w-3 h-3" />
             </Button>
-          
+            <div className="flex-1 flex">
+              <div className="ml-auto"></div>
+                <Link href="/create-post">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="bg-blue-500 text-white whitespace-nowrap flex items-center gap-1 font-medium"
+                    style={{ minWidth: "88px" }}
+                  >
+                    +  새 모집글 
+                  </Button>
+                </Link>
+              </div> 
         </div>
 
         {/* View Mode Toggle */}
@@ -573,7 +592,11 @@ export default function MainPage() {
                           </div>
                         </div>
                         <div className="text-right">
-                        {/*  <p className="text-lg font-bold text-red-500">{post.cost}원</p> */}
+                          <p className="text-lg font-bold text-red-500">
+                            {post.cost === 0 || post.cost === undefined
+                              ? "무료"
+                              : `${Number(post.cost).toLocaleString()}원`}
+                          </p>
                           <Link href={`/post/${post.id}`}>
                             <Button size="sm" className="bg-cyan-500 hover:bg-cyan-600 text-white">
                               상세보기
