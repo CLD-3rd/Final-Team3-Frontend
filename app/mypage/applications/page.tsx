@@ -304,7 +304,8 @@ export default function ApplicationsPage() {
           </>
         )}
       </div>
-
+      
+      {/*
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
         <div className="flex justify-around">
           <Link href="/" className="flex flex-col items-center gap-1 text-gray-400">
@@ -326,7 +327,7 @@ export default function ApplicationsPage() {
             <span className="text-xs">마이페이지</span>
           </Link>
         </div>
-      </div>
+      </div>*/}
     </div>
   )
 }

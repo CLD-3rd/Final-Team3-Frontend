@@ -641,9 +641,9 @@ export default function EventDetail({}: EventDetailProps) {
     </div>
               
 
-      {/* Bottom Navigation  */}
+      {/* Bottom Navigation  
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
-        <div className="flex justify-around">
+        <div className="">
           <Link href="/" className="flex flex-col items-center gap-1 text-gray-400">
             <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
               <span className="text-white text-xs">🏠</span>
@@ -663,7 +663,7 @@ export default function EventDetail({}: EventDetailProps) {
             <span className="text-xs">마이페이지</span>
           </Link>
         </div>
-      </div>
+      </div>*/}
 
       {/* Floating Action Buttons */}
       <div className="fixed bottom-16 right-4 flex flex-col gap-2">
