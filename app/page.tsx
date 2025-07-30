@@ -11,7 +11,6 @@ import CalendarView from "@/components/calendar-view"
 import { apiClient } from "@/lib/api-client"
 import { useRouter } from "next/navigation";
 import type { Post } from "@/types/api"
-//import { toast } from 'react-hot-toast';
 
 const sports = [
   { id: "ALL", name: "전체", icon: "🏃" },
@@ -98,7 +97,11 @@ function parseDateWithTimeZone(dateStr: string): Date {
   return new Date(dateStr.replace(" ", "T") + "+09:00");
 }*/
 
+const getAuthToken = () => localStorage.getItem("auth_token");
+
+
 export default function MainPage() {
+  const router = useRouter();
   const [sortBy, setSortBy] = useState("recent")
   const [selectedSport, setSelectedSport] = useState("전체")
   const [searchQuery, setSearchQuery] = useState("")
@@ -117,6 +120,16 @@ export default function MainPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   
+  const handleCreatePost = () => {
+    const token = getAuthToken();
+    
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+    router.push('/create-post');
+  };
+
   useEffect(() => {
     setSelectedSport("전체");
     setSelectedRegion("모든 지역");
@@ -159,9 +172,7 @@ export default function MainPage() {
   useEffect(() => {
     fetchPosts()
     fetchFavorites()
-  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate])
-  
-  const router = useRouter(); 
+  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate]) 
 
   const fetchPosts = async () => {
     try {
@@ -436,14 +447,15 @@ export default function MainPage() {
             </Button>
             <div className="flex-1 flex">
               <div className="ml-auto"></div>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="bg-blue-500 text-white whitespace-nowrap flex items-center gap-1 font-medium"
-                    style={{ minWidth: "88px" }}
-                  >
-                    +  새 모집글 
-                  </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="bg-blue-500 text-white whitespace-nowrap flex items-center gap-1 font-medium"
+                  style={{ minWidth: "88px" }}
+                  onClick={handleCreatePost}
+                >
+                  +  새 모집글 
+                </Button>
               </div> 
         </div>
 
@@ -552,9 +564,12 @@ export default function MainPage() {
                 <p className="text-gray-500 mb-4">
                   {selectedDate ? "해당 날짜에 모집글이 없습니다" : "조건에 맞는 모집글이 없습니다"}
                 </p>
-                <Link href="/create-post">
-                  <Button className="bg-blue-500 hover:bg-blue-600">새 모집글 작성하기</Button>
-                </Link>
+                <Button 
+                  className="bg-blue-500 hover:bg-blue-600"
+                  onClick={handleCreatePost}
+                >
+                  새 모집글 작성하기
+                </Button>
               </div>
             )}
 
@@ -684,4 +699,3 @@ export default function MainPage() {
     </div>
   )
 }
-
