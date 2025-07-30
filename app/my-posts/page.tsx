@@ -95,9 +95,9 @@ export default function MyPostsPage() {
                   <div className="flex justify-between items-start mb-3">
                     <Badge
                       variant="secondary"
-                      className={`${post.sport === "축구" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}
+                      className={`${post.sports === "축구" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}
                     >
-                      {post.sport}
+                      {post.sports}
                     </Badge>
                     <div className="flex items-center gap-2">
                       <Link href={`/edit-post/${post.id}`}>
@@ -132,7 +132,7 @@ export default function MyPostsPage() {
                     <div className="flex items-center gap-2">
                       <Users className="w-4 h-4 text-green-500" />
                       <span>
-                        {post.currentParticipants}/{post.maxParticipants}명
+                        {post.currentPeople}/{post.maxPeople}명
                       </span>
                     </div>
                   </div>
@@ -173,7 +173,7 @@ export default function MyPostsPage() {
         )}
       </div>
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation 
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
         <div className="flex justify-around">
           <Link href="/" className="flex flex-col items-center gap-1 text-gray-400">
@@ -195,7 +195,7 @@ export default function MyPostsPage() {
             <span className="text-xs">마이페이지</span>
           </Link>
         </div>
-      </div>
+      </div>*/}
     </div>
   )
 }

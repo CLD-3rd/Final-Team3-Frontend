@@ -340,8 +340,25 @@ export default function MainPage() {
             <h1 className="text-xl font-bold">스포츠 메이트</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Bell className="w-6 h-6" />
-            <Link href="/login">
+            {/*<Bell className="w-6 h-6" />*/}
+            {/* 메인페이지(홈) 아이콘 */}
+            <Link href="/">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-6 h-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="white"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 10.75L12 4l9 6.75M4.5 10.75V19a1.25 1.25 0 001.25 1.25h3.5A1.25 1.25 0 0010.5 19v-4.25h3V19A1.25 1.25 0 0014.75 20.25h3.5A1.25 1.25 0 0019.5 19v-8.25"
+                />
+              </svg>
+            </Link>
+            <Link href={nickname ? "/mypage" : "/login"}>
               <User className="w-6 h-6" />
             </Link>
           </div>
@@ -613,7 +630,7 @@ export default function MainPage() {
         )}
       </div>
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation 
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
         <div className="flex justify-around">
           <Link href="/" className="flex flex-col items-center gap-1 text-blue-500">
@@ -635,7 +652,7 @@ export default function MainPage() {
             <span className="text-xs">마이페이지</span>
           </Link>
         </div>
-      </div>
+      </div>*/}
     </div>
   )
 }
