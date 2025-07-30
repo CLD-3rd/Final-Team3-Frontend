@@ -23,6 +23,7 @@ interface PostData {
   date: string
   location: string
   bookmarked: boolean
+  userEmail?: string // 작성자 이메일 추가
 }
 
 interface ToastMessage {
@@ -64,9 +65,38 @@ export default function EventDetail({}: EventDetailProps) {
   const [isFavorited, setIsFavorited] = useState(false)
   const [isJoined, setIsJoined] = useState(false)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
+  const [isAuthor, setIsAuthor] = useState(false)
 
   // 인증 토큰 가져오기 및 API 호출 함수
   const getAuthToken = () => localStorage.getItem("auth_token") || localStorage.getItem("accessToken")
+
+  // JWT 토큰에서 이메일 추출
+  const getEmailFromToken = () => {
+    try {
+      const token = getAuthToken()
+      if (!token) return null
+
+      // JWT 토큰을 디코딩 (payload 부분만)
+      const base64Url = token.split('.')[1]
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      )
+
+      const payload = JSON.parse(jsonPayload)
+      console.log("JWT 토큰 payload:", payload)
+      
+      return payload.email || payload.sub
+    } catch (error) {
+      console.error('JWT 토큰 파싱 실패:', error)
+      return null
+    }
+  }
 
   // 토스트 메시지 추가
   const addToast = (message: string, type: 'success' | 'error') => {
@@ -122,6 +152,12 @@ export default function EventDetail({}: EventDetailProps) {
         setLoading(true)
         setError("")
         
+        // JWT에서 이메일 추출
+        const userEmail = getEmailFromToken()
+        if (userEmail) {
+          setCurrentUserEmail(userEmail)
+        }
+        
         const response = await makeAuthenticatedRequest(`http://localhost:8080/api/posts/${postId}`)
         
         if (!response.ok) {
@@ -133,6 +169,11 @@ export default function EventDetail({}: EventDetailProps) {
         if (data && data.code === "POST201" && data.data) {
           setPost(data.data)
           setIsFavorited(data.data.bookmarked || false)
+          
+          // 작성자 확인 - JWT 이메일과 모집글 작성자 이메일 비교
+          if (userEmail && data.data.userEmail) {
+            setIsAuthor(userEmail === data.data.userEmail)
+          }
         } else {
           throw new Error("게시글을 찾을 수 없습니다.")
         }
@@ -385,8 +426,7 @@ export default function EventDetail({}: EventDetailProps) {
   const getStatusText = (status: string) => {
     const statusMap: { [key: string]: string } = {
       'OPEN': '모집중',
-      'CLOSED': '모집마감',
-      'FULL': '정원마감'
+      'CLOSED': '모집마감'
     }
     return statusMap[status] || status
   }
@@ -484,6 +524,11 @@ export default function EventDetail({}: EventDetailProps) {
                 <Badge variant="secondary" className="bg-blue-100 text-blue-700">
                   {getSportIcon(post.sports)} {getSportName(post.sports)}
                 </Badge>
+                {isAuthor && (
+                  <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                    내 모집글
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -619,66 +664,27 @@ export default function EventDetail({}: EventDetailProps) {
                   </div>
                 </div>
               )}
-              
-              {/* 
-              <div className="grid grid-cols-4 gap-4 mb-4">
-                {[
-                  { icon: "☂️", text: "그늘막" },
-                  { icon: "🚿", text: "샤워실" },
-                  { icon: "🚗", text: "유료주차" },
-                  { icon: "🧊", text: "음료 판매" }
-                ].map((item, idx) => (
-                  <div key={idx} className="bg-gray-50 border rounded-lg p-3 flex flex-col items-center gap-2 text-center">
-                    <span className="text-lg">{item.icon}</span>
-                    <span className="text-sm font-medium text-gray-800">{item.text}</span>
-                  </div>
-                ))}
-              </div>
-              */}
 
           </CardContent>
         </Card>)}
-    </div>
-              
-
-      {/* Bottom Navigation  
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
-        <div className="">
-          <Link href="/" className="flex flex-col items-center gap-1 text-gray-400">
-            <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">🏠</span>
-            </div>
-            <span className="text-xs">홈</span>
-          </Link>
-          <Link href="/my-posts" className="flex flex-col items-center gap-1 text-gray-400">
-            <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">📝</span>
-            </div>
-            <span className="text-xs">내 모집</span>
-          </Link>
-          <Link href="/mypage" className="flex flex-col items-center gap-1 text-gray-400">
-            <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">👤</span>
-            </div>
-            <span className="text-xs">마이페이지</span>
-          </Link>
-        </div>
-      </div>*/}
-
-      {/* Floating Action Buttons */}
-      <div className="fixed bottom-16 right-4 flex flex-col gap-2">
-        <Button
-          onClick={handleJoinEvent}
-          disabled={post.status !== 'OPEN' || isJoined}
-          className={`shadow-lg hover:shadow-xl transition-shadow ${
-            post.status === 'OPEN' && !isJoined
-              ? 'bg-blue-500 hover:bg-blue-600'
-              : 'bg-gray-400 cursor-not-allowed'
-          }`}
-        >
-          {isJoined ? '참가 완료' : post.status === 'OPEN' ? '참가 신청하기' : '모집 마감'}
-        </Button>
       </div>
+
+      {/* Floating Action Buttons - 작성자가 아닌 경우에만 표시 */}
+      {!isAuthor && (
+        <div className="fixed bottom-16 right-4 flex flex-col gap-2">
+          <Button
+            onClick={handleJoinEvent}
+            disabled={post.status !== 'OPEN' || isJoined}
+            className={`shadow-lg hover:shadow-xl transition-shadow ${
+              post.status === 'OPEN' && !isJoined
+                ? 'bg-blue-500 hover:bg-blue-600'
+                : 'bg-gray-400 cursor-not-allowed'
+            }`}
+          >
+            {isJoined ? '참가 완료' : post.status === 'OPEN' ? '참가 신청하기' : '모집 마감'}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
