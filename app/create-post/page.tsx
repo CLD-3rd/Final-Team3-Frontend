@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,7 +10,7 @@ import { ArrowLeft, Minus, Plus, Upload, X } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
-import { Search } from "lucide-react";
+import { Search } from "lucide-react"
 
 const townOptions = [
   { label: "서울", value: "SEOUL" },
@@ -29,7 +28,7 @@ const townOptions = [
   { label: "경남", value: "GYEONGNAM" },
   { label: "제주", value: "JEJU" },
   { label: "대전", value: "DAEJEON" },
-];
+]
 
 const sports = [
   { id: "FOOTBALL", name: "축구", icon: "⚽" },
@@ -62,11 +61,10 @@ export default function CreatePostPage() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [successMessage, setSuccessMessage] = useState("");
-  const [townModalOpen, settownModalOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("")
+  const [townModalOpen, settownModalOpen] = useState(false)
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [uploadingImage, setUploadingImage] = useState(false)
 
   const handleParticipantChange = (increment: boolean) => {
     setFormData((prev) => ({
@@ -75,31 +73,30 @@ export default function CreatePostPage() {
     }))
   }
 
-  // 이미지 파일 선택 처리
+  // 이미지 파일 선택 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      // 파일 타입 체크
-      if (!file.type.startsWith('image/')) {
-        setError("이미지 파일만 업로드 가능합니다.")
-        return
-      }
+    if (!file) return
 
-      setSelectedImage(file)
-      
-      // 미리보기 생성
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const result = e.target?.result as string
-        setImagePreview(result)
-      }
-      reader.readAsDataURL(file)
-      
-      setError("")
+    // 파일 타입 체크
+    if (!file.type.startsWith('image/')) {
+      setError("이미지 파일만 업로드 가능합니다.")
+      return
     }
+
+    setSelectedImage(file)
+    setError("")
+
+    // 미리보기 생성
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const result = e.target?.result as string
+      setImagePreview(result)
+    }
+    reader.readAsDataURL(file)
   }
 
-  // 이미지 제거
+  // 이미지 제거 
   const handleImageRemove = () => {
     setSelectedImage(null)
     setImagePreview(null)
@@ -117,13 +114,13 @@ export default function CreatePostPage() {
     setError("")
     setSuccessMessage("")
 
-    console.log("formData.town 값:", formData.town);
-
     try {
-      const isoDateTime = `${formData.date}T${formData.time}`;
-      const selectedTownObj = townOptions.find(opt => opt.label === formData.town);
-      const townValue = selectedTownObj ? selectedTownObj.value : "";
-
+      const isoDateTime = `${formData.date}T${formData.time}`
+      
+      // FormData 생성
+      const submitFormData = new FormData()
+      
+      // JSON 데이터를 Blob으로 변환하여 추가
       const postData = {
         title: formData.title,
         description: formData.content,
@@ -135,28 +132,58 @@ export default function CreatePostPage() {
         cost: Number.parseInt(formData.cost) || 0,
         maxPeople: formData.maxParticipants,
         date: isoDateTime,
-        imageUrl: null, // 일단 null로 전송 (S3 연동 전까지)
+      }
+      
+      submitFormData.append('postData', new Blob([JSON.stringify(postData)], {
+        type: 'application/json'
+      }))
+      
+      // 이미지 파일 추가 (있는 경우)
+      if (selectedImage) {
+        submitFormData.append('image', selectedImage)
       }
 
-      console.log("제출 직전 town 값:", postData.town, typeof postData.town, postData);
-      if (!postData.town || postData.town.trim() === "") {
-        setError("지역(동네)을 입력해주세요.");
-        return;
+      // 토큰 가져오기
+      const token = localStorage.getItem('auth_token') 
+      console.log('사용 중인 토큰:', token ? '토큰 있음' : '토큰 없음')
+      
+      const headers: HeadersInit = {}
+      
+      headers['Authorization'] = `Bearer ${token}`
+        
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/posts`, {
+        method: 'POST',
+        headers: headers,
+        body: submitFormData,
+      })
+
+      console.log('Response status:', response.status)
+      console.log('Response headers:', response.headers)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.log('Error response:', errorText)
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
 
-      const response = await apiClient.createPost(postData)
-      if (response.code === "POST200") {
-        console.log("등록 성공! 메시지:", response.message);
-        setSuccessMessage(response.message ?? "등록 성공");
-        setTimeout(() => router.push("/my-posts"), 1000);
-      } else {
-        setError("모집글 등록에 실패했습니다.");
-      }
+      const result = await response.json()
+      
+      if (response.status === 200 && result.code === 'POST200') {
+      console.log("등록 성공! 메시지:", result.message)
+      setSuccessMessage(result.message ?? "등록 성공")
+      setTimeout(() => router.push("/"), 1000)
+    } else {
+      setError("모집글 등록에 실패했습니다.")
+    }
     } catch (error) {
-      setError("모집글 등록 중 오류가 발생했습니다.");
-      console.error("Create post error:", error);
+      console.error("Create post error:", error)
+      if (error instanceof Error) {
+        setError(`모집글 등록 중 오류가 발생했습니다: ${error.message}`)
+      } else {
+        setError("모집글 등록 중 오류가 발생했습니다.")
+      }
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
@@ -252,9 +279,9 @@ export default function CreatePostPage() {
                         variant={formData.town === option.value ? "default" : "outline"}
                         className={formData.town === option.value ? "bg-blue-500 text-white" : ""}
                         onClick={() => {
-                          setFormData(prev => ({ ...prev, town: option.value }));
-                          settownModalOpen(false);
-                          console.log("선택된 town:", option.value);
+                          setFormData(prev => ({ ...prev, town: option.value }))
+                          settownModalOpen(false)
+                          console.log("선택된 town:", option.value)
                         }}
                       >
                         {option.label}
@@ -424,7 +451,6 @@ export default function CreatePostPage() {
                 variant="outline"
                 className="flex items-center gap-2"
                 onClick={() => document.getElementById('image-upload')?.click()}
-                disabled={uploadingImage}
               >
                 <Upload className="w-4 h-4" />
                 이미지 선택
@@ -443,7 +469,6 @@ export default function CreatePostPage() {
             </div>
             <p className="text-sm text-gray-500 mt-1">
               JPG, PNG 파일만 업로드 가능
-              <br />
             </p>
           </div>
 
@@ -468,6 +493,7 @@ export default function CreatePostPage() {
               {successMessage}
             </div>
           )}
+          
           {/* Submit Button */}
           <Button
             type="submit"
