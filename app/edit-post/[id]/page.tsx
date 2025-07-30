@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,7 +10,7 @@ import { ArrowLeft, Minus, Plus, Upload, X } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
-import { Search } from "lucide-react";
+import { Search } from "lucide-react"
 
 const townOptions = [
   { label: "서울", value: "SEOUL" },
@@ -30,7 +29,7 @@ const townOptions = [
   { label: "경남", value: "GYEONGNAM" },
   { label: "제주", value: "JEJU" },
   { label: "대전", value: "DAEJEON" },
-];
+]
 
 const sports = [
   { id: "FOOTBALL", name: "축구", icon: "⚽" },
@@ -85,14 +84,15 @@ export default function EditPostPage() {
   const [loading, setLoading] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
   const [error, setError] = useState("")
-  const [successMessage, setSuccessMessage] = useState("");
-  const [townModalOpen, settownModalOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("")
+  const [townModalOpen, settownModalOpen] = useState(false)
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [uploadingImage, setUploadingImage] = useState(false)
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null) // 원본 이미지 URL 저장
+  const [imageRemoved, setImageRemoved] = useState(false) // 이미지 삭제 여부 추적
 
   // 인증 토큰 가져오기
-  const getAuthToken = () => localStorage.getItem("auth_token") || localStorage.getItem("accessToken")
+  const getAuthToken = () => localStorage.getItem("auth_token")
 
   // JWT 토큰에서 이메일 추출
   const getEmailFromToken = () => {
@@ -160,28 +160,6 @@ export default function EditPostPage() {
       setError("인증이 만료되었습니다. 다시 로그인해주세요.")
       router.push('/login')
       throw new Error("인증 만료")
-    }
-
-    if (response.status === 403) {
-      // 403 에러 시 재시도
-      console.log("403 에러 발생, 0.5초 후 재시도...")
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      const retryResponse = await fetch(url, {
-        ...options,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-      })
-
-      console.log("재시도 응답:", {
-        status: retryResponse.status,
-        statusText: retryResponse.statusText
-      })
-
-      return retryResponse
     }
 
     return response
@@ -276,6 +254,7 @@ export default function EditPostPage() {
           // 기존 이미지가 있으면 미리보기로 설정
           if (post.imageUrl) {
             setImagePreview(post.imageUrl)
+            setOriginalImageUrl(post.imageUrl) // 원본 이미지 URL 저장
           }
         } else {
           throw new Error("게시글을 찾을 수 없습니다.")
@@ -309,26 +288,25 @@ export default function EditPostPage() {
   // 이미지 파일 선택 처리
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
+    if (!file) return
 
-      // 파일 타입 체크
-      if (!file.type.startsWith('image/')) {
-        setError("이미지 파일만 업로드 가능합니다.")
-        return
-      }
-
-      setSelectedImage(file)
-      
-      // 미리보기 생성
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const result = e.target?.result as string
-        setImagePreview(result)
-      }
-      reader.readAsDataURL(file)
-      
-      setError("")
+    // 파일 타입 체크
+    if (!file.type.startsWith('image/')) {
+      setError("이미지 파일만 업로드 가능합니다.")
+      return
     }
+
+    setSelectedImage(file)
+    setImageRemoved(false) // 새 이미지를 선택하면 삭제 상태 해제
+    setError("")
+
+    // 미리보기 생성
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const result = e.target?.result as string
+      setImagePreview(result)
+    }
+    reader.readAsDataURL(file)
   }
 
   // 이미지 제거
@@ -336,6 +314,7 @@ export default function EditPostPage() {
     setSelectedImage(null)
     setImagePreview(null)
     setFormData(prev => ({ ...prev, imageUrl: null }))
+    setImageRemoved(true) // 이미지가 삭제되었음을 표시
     
     // 파일 input 초기화
     const fileInput = document.getElementById('image-upload') as HTMLInputElement
@@ -351,11 +330,12 @@ export default function EditPostPage() {
     setSuccessMessage("")
 
     try {
-      // 이미지는 일단 null로 전송 (S3 연동 전까지)
-      const finalImageUrl = null
-
-      const isoDateTime = `${formData.date}T${formData.time}`;
+      const isoDateTime = `${formData.date}T${formData.time}`
       
+      // FormData 생성
+      const submitFormData = new FormData()
+      
+      // JSON 데이터를 Blob으로 변환하여 추가
       const postData = {
         title: formData.title,
         description: formData.content,
@@ -365,93 +345,69 @@ export default function EditPostPage() {
         gender: formData.gender,
         status: "OPEN",
         cost: Number.parseInt(formData.cost) || 0,
-        imageUrl: finalImageUrl,
         sports: formData.sport,
         town: formData.town,
+        // 이미지 삭제 여부를 명시적으로 전달
+        removeImage: imageRemoved && originalImageUrl !== null
+      }
+      
+      submitFormData.append('postData', new Blob([JSON.stringify(postData)], {
+        type: 'application/json'
+      }))
+      
+      // 이미지 파일 추가 (있는 경우)
+      if (selectedImage) {
+        submitFormData.append('image', selectedImage)
       }
 
-      console.log("수정 요청 데이터:", postData);
+      // 토큰 가져오기
+      const token = getAuthToken()
+      console.log('사용 중인 토큰:', token ? '토큰 있음' : '토큰 없음')
+      
+      const headers: HeadersInit = {}
+      
+      headers['Authorization'] = `Bearer ${token}`
+
+      console.log("수정 요청 데이터:", postData)
 
       if (!postData.town || postData.town.trim() === "") {
-        setError("지역(동네)을 선택해주세요.");
-        return;
+        setError("지역(동네)을 선택해주세요.")
+        return
       }
 
-      const response = await makeAuthenticatedRequest(`http://localhost:8080/api/posts/${postId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/posts/${postId}`, {
         method: 'PUT',
-        body: JSON.stringify(postData)
+        headers: headers,
+        body: submitFormData,
       })
 
-      console.log("최종 응답 상태:", response.status, response.statusText)
+      console.log('Response status:', response.status)
+      console.log('Response headers:', response.headers)
 
-      if (response.ok) {
-        // 응답이 JSON인지 확인
-        const contentType = response.headers.get('content-type')
-        let result = null
-        
-        if (contentType && contentType.includes('application/json')) {
-          try {
-            result = await response.json()
-            console.log("수정 성공! 응답:", result)
-          } catch (jsonError) {
-            console.log("JSON 파싱 실패, 하지만 요청은 성공:", jsonError)
-            result = { message: "수정이 완료되었습니다." }
-          }
-        } else {
-          const textResponse = await response.text()
-          console.log("텍스트 응답:", textResponse)
-          result = { message: "수정이 완료되었습니다." }
-        }
-        
-        setSuccessMessage("모집글이 성공적으로 수정되었습니다!");
-        setTimeout(() => router.push("/mypage/my-posts"), 1000);
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.log('Error response:', errorText)
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
+      }
+
+      const result = await response.json()
+      
+      if (response.status === 200 && (result.code === 'POST202' || result.code?.includes('POST'))) {
+        console.log("수정 성공! 메시지:", result.message)
+        setSuccessMessage(result.message ?? "모집글이 성공적으로 수정되었습니다!")
+        setTimeout(() => router.push("/mypage/my-posts"), 1000)
       } else {
-        // 에러 응답 처리
-        let errorMessage = "모집글 수정에 실패했습니다."
-        
-        try {
-          const contentType = response.headers.get('content-type')
-          if (contentType && contentType.includes('application/json')) {
-            const errorData = await response.json()
-            errorMessage = errorData.message || errorMessage
-          } else {
-            const textError = await response.text()
-            errorMessage = textError || errorMessage
-          }
-        } catch (parseError) {
-          console.log("에러 응답 파싱 실패:", parseError)
-          if (response.status === 403) {
-            errorMessage = "이 모집글을 수정할 권한이 없습니다."
-          } else if (response.status === 404) {
-            errorMessage = "모집글을 찾을 수 없습니다."
-          } else if (response.status === 401) {
-            errorMessage = "로그인이 필요합니다."
-            router.push('/login')
-            return
-          } else {
-            errorMessage = `서버 오류 (${response.status}): ${response.statusText}`
-          }
-        }
-        
-        console.error("API 에러:", { status: response.status, message: errorMessage })
-        setError(errorMessage)
+        setError("모집글 수정에 실패했습니다.")
       }
     } catch (error) {
       console.error("Edit post error:", error)
-      
-      // 네트워크 오류나 기타 예외 처리
       if (error instanceof Error) {
-        if (error.message.includes('인증')) {
-          setError("로그인이 필요합니다.")
-          router.push('/login')
-        } else {
-          setError(error.message)
-        }
+        setError(`모집글 수정 중 오류가 발생했습니다: ${error.message}`)
       } else {
-        setError("모집글 수정 중 알 수 없는 오류가 발생했습니다.")
+        setError("모집글 수정 중 오류가 발생했습니다.")
       }
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
@@ -500,6 +456,7 @@ export default function EditPostPage() {
                   onClick={() => router.push('/mypage')} 
                   className="bg-blue-500 hover:bg-blue-600"
                 >
+                  마이페이지로
                 </Button>
                 <Button 
                   onClick={() => router.back()} 
@@ -608,9 +565,9 @@ export default function EditPostPage() {
                         variant={formData.town === option.value ? "default" : "outline"}
                         className={formData.town === option.value ? "bg-blue-500 text-white" : ""}
                         onClick={() => {
-                          setFormData(prev => ({ ...prev, town: option.value }));
-                          settownModalOpen(false);
-                          console.log("선택된 town:", option.value);
+                          setFormData(prev => ({ ...prev, town: option.value }))
+                          settownModalOpen(false)
+                          console.log("선택된 town:", option.value)
                         }}
                       >
                         {option.label}
@@ -780,7 +737,6 @@ export default function EditPostPage() {
                 variant="outline"
                 className="flex items-center gap-2"
                 onClick={() => document.getElementById('image-upload')?.click()}
-                disabled={uploadingImage}
               >
                 <Upload className="w-4 h-4" />
                 이미지 선택
