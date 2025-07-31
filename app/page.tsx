@@ -100,6 +100,14 @@ function parseDateWithTimeZone(dateStr: string): Date {
 
 const getAuthToken = () => localStorage.getItem("auth_token");
 
+const sportsColorMap: Record<string, string> = {
+    테니스: "bg-blue-100 text-blue-700",
+    축구: "bg-green-100 text-green-700",
+    농구: "bg-orange-100 text-orange-700",
+    배구: "bg-purple-100 text-purple-700",
+    탁구: "bg-red-100 text-red-700",
+    배드민턴: "bg-yellow-100 text-yellow-700"
+}
 
 export default function MainPage() {
   const router = useRouter();
@@ -254,16 +262,17 @@ export default function MainPage() {
     if (!regionMatch) return false;
 
     // 2. 날짜 필터 + 현재 시각 이후 모집글만
+    // 현재 시각 이후 모집글만 (항상 적용)
+    if (post.date) {
+      const postDateTime = new Date(post.date.replace(" ", "T"));
+      // 현재 시각 이후만 남김
+      if (postDateTime <= now) return false;
+    }
+
+    // 특정 날짜가 선택된 경우 해당 날짜만 필터링
     if (selectedDate) {
       const postDateStr = post.date?.split("T")[0];
       if (postDateStr !== selectedDate) return false;
-
-      // "YYYY-MM-DDTHH:mm:ss" 또는 "YYYY-MM-DD HH:mm:ss"
-      if (post.date) {
-        const postDateTime = new Date(post.date.replace(" ", "T"));
-        // 현재 시각 이후만 남김
-        if (postDateTime <= now) return false;
-      }
     }
     // selectedDate가 없으면 모두 통과
     return true;
@@ -584,15 +593,7 @@ export default function MainPage() {
                       <div className="flex justify-between items-start mb-3">
                         <Badge
                           variant="secondary"
-                          className={`${
-                            post.sports === "축구"
-                              ? "bg-blue-100 text-blue-700"
-                              : post.sports === "테니스"
-                                ? "bg-green-100 text-green-700"
-                                : post.sports === "탁구"
-                                  ? "bg-red-100 text-red-700"
-                                  : "bg-orange-100 text-orange-700"
-                          }`}
+                          className={sportsColorMap[post.sports] || sportsColorMap["기타"]}
                         >
                           {post.sports}
                         </Badge>
