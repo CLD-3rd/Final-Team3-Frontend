@@ -254,16 +254,17 @@ export default function MainPage() {
     if (!regionMatch) return false;
 
     // 2. 날짜 필터 + 현재 시각 이후 모집글만
+    // 현재 시각 이후 모집글만 (항상 적용)
+    if (post.date) {
+      const postDateTime = new Date(post.date.replace(" ", "T"));
+      // 현재 시각 이후만 남김
+      if (postDateTime <= now) return false;
+    }
+
+    // 특정 날짜가 선택된 경우 해당 날짜만 필터링
     if (selectedDate) {
       const postDateStr = post.date?.split("T")[0];
       if (postDateStr !== selectedDate) return false;
-
-      // "YYYY-MM-DDTHH:mm:ss" 또는 "YYYY-MM-DD HH:mm:ss"
-      if (post.date) {
-        const postDateTime = new Date(post.date.replace(" ", "T"));
-        // 현재 시각 이후만 남김
-        if (postDateTime <= now) return false;
-      }
     }
     // selectedDate가 없으면 모두 통과
     return true;
