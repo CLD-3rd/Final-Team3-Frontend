@@ -10,7 +10,6 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import CalendarView from "@/components/calendar-view"
 import { apiClient } from "@/lib/api-client"
-import { useRouter } from "next/navigation";
 import type { Post } from "@/types/api"
 //import { toast } from 'react-hot-toast';
 
@@ -176,7 +175,6 @@ export default function MainPage() {
     fetchFavorites()
   }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate])
   
-  const router = useRouter(); 
 
   const fetchPosts = async () => {
     try {
