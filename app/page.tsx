@@ -100,6 +100,14 @@ function parseDateWithTimeZone(dateStr: string): Date {
 
 const getAuthToken = () => localStorage.getItem("auth_token");
 
+const sportsColorMap: Record<string, string> = {
+    테니스: "bg-blue-100 text-blue-700",
+    축구: "bg-green-100 text-green-700",
+    농구: "bg-orange-100 text-orange-700",
+    배구: "bg-purple-100 text-purple-700",
+    탁구: "bg-red-100 text-red-700",
+    배드민턴: "bg-yellow-100 text-yellow-700"
+}
 
 export default function MainPage() {
   const router = useRouter();
@@ -585,15 +593,7 @@ export default function MainPage() {
                       <div className="flex justify-between items-start mb-3">
                         <Badge
                           variant="secondary"
-                          className={`${
-                            post.sports === "축구"
-                              ? "bg-blue-100 text-blue-700"
-                              : post.sports === "테니스"
-                                ? "bg-green-100 text-green-700"
-                                : post.sports === "탁구"
-                                  ? "bg-red-100 text-red-700"
-                                  : "bg-orange-100 text-orange-700"
-                          }`}
+                          className={sportsColorMap[post.sports] || sportsColorMap["기타"]}
                         >
                           {post.sports}
                         </Badge>
