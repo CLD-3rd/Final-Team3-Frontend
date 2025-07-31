@@ -26,7 +26,7 @@ const regions = ["서울", "경기", "대전", "대구", "인천", "울산", "�
 const genders = ["남녀 모두", "남자", "여자"]
 
 const genderMap = {
-  "남여 모두": undefined,
+  "남녀 모두": "ALL",
   "남자": "MALE",
   "여자": "FEMALE",
 };
@@ -87,7 +87,7 @@ export default function MainPage() {
   useEffect(() => {
     setSelectedSport("전체");
     setSelectedRegion("모든 지역");
-    setSelectedGender("남녀 모두");
+    setSelectedGender("성별");
     setSelectedDate(null);
     setViewMode("list");
   }, []);
@@ -224,13 +224,12 @@ export default function MainPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* 모달들 */}
       {showGenderModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="p-6 border-b border-gray-100">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-900">성별 선택</h3>
+                <h3 className="text-lg font-semibold text-gray-900">성별</h3>
                 <button 
                   onClick={() => setShowGenderModal(false)}
                   className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
@@ -309,7 +308,6 @@ export default function MainPage() {
         </div>
       )}
 
-      {/* Header - 심플하고 고정 */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
@@ -337,9 +335,7 @@ export default function MainPage() {
         </div>
       </header>
 
-      {/* Section 1: 메인 히어로 with 고정 배경 */}
       <section className="relative h-screen flex items-center justify-center overflow-hidden">
-        {/* 고정된 배경 이미지 - 이 섹션에만 */}
         <div 
           className="absolute inset-0 bg-cover bg-center bg-fixed opacity-20"
           style={{
@@ -368,7 +364,6 @@ export default function MainPage() {
 
       
 
-      {/* Section 3: 운동 종목 소개 */}
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
@@ -397,7 +392,6 @@ export default function MainPage() {
         </div>
       </section>
 
-      {/* Section 4: 특징 */}
       <section className="py-24 bg-gradient-to-br from-blue-50 to-purple-50">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
@@ -461,10 +455,8 @@ export default function MainPage() {
         </div>
       </section>
 
-      {/* Section 5: 모집글 리스트 */}
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6">
-          {/* Filter Section */}
           <div className="bg-gray-50 rounded-2xl p-8 mb-12">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
               <div className="flex items-center gap-2">
@@ -489,7 +481,6 @@ export default function MainPage() {
               </div>
             </div>
 
-            {/* View Toggle */}
             <div className="flex gap-2">
               <button
                 onClick={() => setViewMode("list")}
@@ -520,7 +511,6 @@ export default function MainPage() {
             <CalendarView onDateSelect={handleDateSelect} />
           ) : (
             <>
-              {/* Sports Categories */}
               <div className="mb-12">
                 <h3 className="text-2xl font-semibold text-gray-900 mb-8">운동 종목</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
@@ -543,7 +533,6 @@ export default function MainPage() {
                 </div>
               </div>
 
-              {/* Sort Header */}
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h3 className="text-2xl font-semibold text-gray-900">
@@ -588,7 +577,6 @@ export default function MainPage() {
                 </div>
               </div>
 
-              {/* Loading State */}
               {loading && !error && (
                 <div className="text-center py-16">
                   <div className="inline-block w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin mb-4"></div>
@@ -596,7 +584,6 @@ export default function MainPage() {
                 </div>
               )}
 
-              {/* Error State */}
               {error && (
                 <div className="text-center py-16">
                   <div className="w-20 h-20 bg-red-50 rounded-2xl mx-auto mb-6 flex items-center justify-center">
@@ -612,7 +599,6 @@ export default function MainPage() {
                 </div>
               )}
 
-              {/* Empty State */}
               {!loading && !error && filteredPosts.length === 0 && (
                 <div className="text-center py-16">
                   <div className="w-24 h-24 bg-gray-50 rounded-2xl mx-auto mb-8 flex items-center justify-center">
@@ -631,7 +617,6 @@ export default function MainPage() {
                 </div>
               )}
 
-              {/* Posts Grid */}
               {!loading && !error && filteredPosts.length > 0 && (
                 <div className="grid gap-8 lg:grid-cols-2">
                   {sortedPosts.map((post) => (
@@ -740,7 +725,6 @@ export default function MainPage() {
         </div>
       </section>
 
-      {/* Section 6: CTA */}
       <section className="py-24 bg-gradient-to-r from-gray-900 to-black text-white">
         <div className="max-w-4xl mx-auto text-center px-6">
           <h2 className="text-4xl md:text-5xl font-bold mb-8">
