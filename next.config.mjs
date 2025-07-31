@@ -9,6 +9,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+//  output: 'export', // ci, cd를 위한 설정
 }
 
 export default nextConfig

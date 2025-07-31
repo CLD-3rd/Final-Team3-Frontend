@@ -61,6 +61,11 @@ interface PostData {
   location: string
   userEmail: string 
 }
+/*
+export async function generateStaticParams() {
+  const ids = Array.from({ length: 100 }, (_, i) => String(i + 1));
+  return ids.map(id => ({ id }));
+}*/
 
 export default function EditPostPage() {
   const router = useRouter()
