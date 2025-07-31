@@ -192,6 +192,7 @@ export default function MainPage() {
   const myMainRegion = extractMainRegion(myRegion);
 
   const filteredPosts = posts.filter(post => {
+    // 1. 지역 필터
     const regionMatch = selectedRegion === "모든 지역"
       ? true
       : selectedRegion === "내 지역"
@@ -200,15 +201,20 @@ export default function MainPage() {
 
     if (!regionMatch) return false;
 
+    // 2. 현재 시각 이후 모집글만 (항상 적용)
+    if (post.date) {
+      const postDateTime = new Date(post.date.replace(" ", "T"));
+      // 현재 시각 이후만 남김
+      if (postDateTime <= now) return false;
+    }
+
+    // 3. 특정 날짜가 선택된 경우 해당 날짜만 필터링
     if (selectedDate) {
       const postDateStr = post.date?.split("T")[0];
       if (postDateStr !== selectedDate) return false;
-
-      if (post.date) {
-        const postDateTime = new Date(post.date.replace(" ", "T"));
-        if (postDateTime <= now) return false;
-      }
     }
+
+    // selectedDate가 없으면 모두 통과
     return true;
   });
 
