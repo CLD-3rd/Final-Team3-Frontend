@@ -10,7 +10,9 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import CalendarView from "@/components/calendar-view"
 import { apiClient } from "@/lib/api-client"
+import { useRouter } from "next/navigation";
 import type { Post } from "@/types/api"
+//import { toast } from 'react-hot-toast';
 
 const sports = [
   { id: "ALL", name: "전체", icon: "🏃" },
@@ -22,11 +24,31 @@ const sports = [
   { id: "VOLLEYBALL", name: "배구", icon: "🏐" },
 ]
 
-const regions = ["서울", "경기", "대전", "대구", "인천", "울산", "광주", "세종", "충북", "충남", "경북", "경남", "전북", "전남", "제주"]
+const regions = ["서울", "경기", "강원", "대전", "대구", "인천", "울산", "부산", "광주", "세종", "충북", "충남", "경북", "경남", "전북", "전남", "제주"]
 const genders = ["남녀 모두", "남자", "여자"]
 
+const regionAliasMap: Record<string, string> = {
+  "서울특별시": "서울",
+  "부산광역시": "부산", 
+  "대구광역시": "대구", 
+  "인천광역시": "인천",
+  "광주광역시": "광주",
+  "대전광역시": "대전",
+  "울산광역시": "울산",
+  "세종특별자치시": "세종",
+  "경기도": "경기",
+  "강원도": "강원",
+  "경상남도": "경남",
+  "경상북도": "경북",
+  "전라남도": "전남",
+  "전라북도": "전북",
+  "충청남도": "충남",
+  "충청북도": "충북",
+  "제주특별자치도": "제주"
+};
+
 const genderMap = {
-  "남여 모두": undefined,
+  "남녀 모두": "ALL",
   "남자": "MALE",
   "여자": "FEMALE",
 };
@@ -50,6 +72,12 @@ function formatTimeToKorean12Hour(dateString: string) {
 
 function extractMainRegion(town: string): string | undefined {
   if (!town) return undefined;
+
+  // 1. 매핑 테이블에 있으면
+  for (const [long, short] of Object.entries(regionAliasMap)) {
+    if (town.startsWith(long)) return short;
+  }
+  // 2. regions 배열에서 찾기
   return regions.find(region => town.startsWith(region));
 }
 /*
@@ -147,6 +175,8 @@ export default function MainPage() {
     fetchPosts()
     fetchFavorites()
   }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate])
+  
+  const router = useRouter(); 
 
   const fetchPosts = async () => {
     try {
