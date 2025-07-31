@@ -70,7 +70,7 @@ export default function LoginPage() {
       // 1. 토큰 저장
       localStorage.setItem("auth_token", kakaoToken);
       // 2. 메인페이지로 이동
-      router.push("/");
+      window.location.href = "/"
     }
   }, [kakaoToken, router]);
   
