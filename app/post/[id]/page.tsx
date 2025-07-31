@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowLeft, Share2, Heart, Users, Clock, MapPin, AlertTriangle, Bell, User, Eye, CheckCircle, XCircle } from "lucide-react"
+import { ArrowLeft, Share2, Heart, Users, Clock, MapPin, AlertTriangle, Bell, User, Eye, CheckCircle, XCircle, Shield, Zap, Trophy, Star } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
 
@@ -32,28 +32,24 @@ interface ToastMessage {
   type: 'success' | 'error'
 }
 
-interface EventDetailProps {
-  // postId를 props로 받지 않고 URL 파라미터에서 직접 가져옴
-}
-
 // 토스트 컴포넌트
 const Toast = ({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) => (
-  <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg transition-all ${
+  <div className={`fixed top-8 right-8 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl transition-all transform animate-in slide-in-from-right-5 ${
     type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
   }`}>
     {type === 'success' ? (
-      <CheckCircle className="w-5 h-5" />
+      <CheckCircle className="w-6 h-6" />
     ) : (
-      <XCircle className="w-5 h-5" />
+      <XCircle className="w-6 h-6" />
     )}
-    <span className="text-sm font-medium">{message}</span>
-    <button onClick={onClose} className="ml-2 text-white/80 hover:text-white">
-      ×
+    <span className="font-semibold">{message}</span>
+    <button onClick={onClose} className="ml-2 text-white/80 hover:text-white transition-colors">
+      <span className="text-xl">×</span>
     </button>
   </div>
 )
 
-export default function EventDetail({}: EventDetailProps) {
+export default function EventDetail() {
   const router = useRouter()
   const params = useParams()
   const postId = params?.id as string || params?.postId as string
@@ -208,7 +204,7 @@ export default function EventDetail({}: EventDetailProps) {
     } else {
       try {
         await navigator.clipboard.writeText(window.location.href)
-        alert('링크가 복사되었습니다!')
+        addToast('링크가 복사되었습니다!', 'success')
       } catch (error) {
         console.error('클립보드 복사 실패:', error)
       }
@@ -244,9 +240,9 @@ export default function EventDetail({}: EventDetailProps) {
               }
               
               if (data.message) {
-                showToast(data.message, 'success')
+                addToast(data.message, 'success')
               } else {
-                showToast(isNowFollowed ? '찜하기가 완료되었습니다!' : '찜하기가 해제되었습니다!', 'success')
+                addToast(isNowFollowed ? '찜하기가 완료되었습니다!' : '찜하기가 해제되었습니다!', 'success')
               }
             } else {
               throw new Error('응답 형식이 올바르지 않습니다.')
@@ -257,7 +253,7 @@ export default function EventDetail({}: EventDetailProps) {
             if (post) {
               setPost({ ...post, bookmarked: newFavoriteState })
             }
-            showToast(newFavoriteState ? '찜하기가 완료되었습니다!' : '찜하기가 해제되었습니다!', 'success')
+            addToast(newFavoriteState ? '찜하기가 완료되었습니다!' : '찜하기가 해제되었습니다!', 'success')
           }
         } else {
           const newFavoriteState = !isFavorited
@@ -265,7 +261,7 @@ export default function EventDetail({}: EventDetailProps) {
           if (post) {
             setPost({ ...post, bookmarked: newFavoriteState })
           }
-          showToast(newFavoriteState ? '찜하기가 완료되었습니다!' : '찜하기가 해제되었습니다!', 'success')
+          addToast(newFavoriteState ? '찜하기가 완료되었습니다!' : '찜하기가 해제되었습니다!', 'success')
         }
       } else {
         if (response.status === 401 || response.status === 403) {
@@ -274,9 +270,9 @@ export default function EventDetail({}: EventDetailProps) {
           try {
             const errorData = await response.json()
             const errorMessage = errorData?.message || '찜하기 처리에 실패했습니다.'
-            showToast(errorMessage, 'error')
+            addToast(errorMessage, 'error')
           } catch (parseError) {
-            showToast('찜하기 처리에 실패했습니다.', 'error')
+            addToast('찜하기 처리에 실패했습니다.', 'error')
           }
         }
       }
@@ -285,14 +281,9 @@ export default function EventDetail({}: EventDetailProps) {
         router.push('/login')
       } else {
         const errorMessage = error instanceof Error ? error.message : '찜하기 처리에 실패했습니다.'
-        showToast(errorMessage, 'error')
+        addToast(errorMessage, 'error')
       }
     }
-  }
-
-  // 토스트 메시지 표시 함수
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    addToast(message, type)
   }
 
   const handleJoinEvent = async () => {
@@ -322,7 +313,7 @@ export default function EventDetail({}: EventDetailProps) {
         }
         
         setIsJoined(true)
-        showToast(data.message || '참가 신청이 완료되었습니다!', 'success')
+        addToast(data.message || '참가 신청이 완료되었습니다!', 'success')
       } else {
         let errorData = null
         const contentType = response.headers.get('content-type')
@@ -342,21 +333,21 @@ export default function EventDetail({}: EventDetailProps) {
           const duplicateMessage = (errorData?.message && errorData.message !== '요청 처리 중 오류가 발생했습니다.') 
             ? errorData.message 
             : '이미 신청한 모집글입니다'
-          showToast(duplicateMessage, 'error')
+          addToast(duplicateMessage, 'error')
         } else if (response.status === 403) {
-          showToast('이미 신청한 모집글입니다', 'error')
+          addToast('이미 신청한 모집글입니다', 'error')
         } else if (response.status === 409) {
           const duplicateMessage = (errorData?.message && errorData.message !== '요청 처리 중 오류가 발생했습니다.') 
             ? errorData.message 
             : '이미 신청한 모집글입니다'
-          showToast(duplicateMessage, 'error')
+          addToast(duplicateMessage, 'error')
         } else if (response.status === 401) {
           router.push('/login')
         } else {
           const errorMessage = (errorData?.message && errorData.message !== '요청 처리 중 오류가 발생했습니다.') 
             ? errorData.message 
             : '참가 신청에 실패했습니다.'
-          showToast(errorMessage, 'error')
+          addToast(errorMessage, 'error')
         }
       }
     } catch (error) {
@@ -364,7 +355,7 @@ export default function EventDetail({}: EventDetailProps) {
         router.push('/login')
       } else {
         const errorMessage = error instanceof Error ? error.message : '참가 신청에 실패했습니다.'
-        showToast(errorMessage, 'error')
+        addToast(errorMessage, 'error')
       }
     }
   }
@@ -426,14 +417,15 @@ export default function EventDetail({}: EventDetailProps) {
   const getStatusText = (status: string) => {
     const statusMap: { [key: string]: string } = {
       'OPEN': '모집중',
-      'CLOSED': '모집마감'
+      'CLOSED': '모집마감',
+      'FULL': '정원마감'
     }
     return statusMap[status] || status
   }
 
   const getStatusColor = (status: string) => {
     const colorMap: { [key: string]: string } = {
-      'OPEN': 'bg-green-500',
+      'OPEN': 'bg-emerald-500',
       'CLOSED': 'bg-red-500',
       'FULL': 'bg-orange-500'
     }
@@ -442,10 +434,10 @@ export default function EventDetail({}: EventDetailProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-500">로딩 중...</p>
+          <div className="inline-block w-12 h-12 border-2 border-gray-300 border-t-black rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-500 text-lg font-medium">로딩 중...</p>
         </div>
       </div>
     )
@@ -453,13 +445,17 @@ export default function EventDetail({}: EventDetailProps) {
 
   if (error || !post) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-            <AlertTriangle className="w-8 h-8 text-red-500" />
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center px-6">
+          <div className="w-24 h-24 bg-red-50 rounded-3xl mx-auto mb-6 flex items-center justify-center">
+            <AlertTriangle className="w-12 h-12 text-red-500" />
           </div>
-          <p className="text-red-500 mb-4">{error}</p>
-          <Button onClick={() => router.back()} variant="outline">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">오류가 발생했습니다</h2>
+          <p className="text-gray-600 mb-8 text-lg">{error}</p>
+          <Button 
+            onClick={() => router.back()} 
+            className="px-8 py-3 bg-black text-white rounded-2xl hover:bg-gray-800 transition-colors font-semibold"
+          >
             뒤로가기
           </Button>
         </div>
@@ -468,7 +464,7 @@ export default function EventDetail({}: EventDetailProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {toasts.map((toast) => (
         <Toast
           key={toast.id}
@@ -479,212 +475,276 @@ export default function EventDetail({}: EventDetailProps) {
       ))}
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-              <span className="text-blue-500 font-bold">⚽</span>
-            </div>
-            <h1 className="text-xl font-bold">스포츠 메이트</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Bell className="w-6 h-6" />
-            <Link href="/mypage">
-              <User className="w-6 h-6" />
-            </Link>
-          </div>
-        </div>
-
-        <div className="mb-4">
-          <p className="text-sm opacity-90">모집글 상세</p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-4">
+            <button
               onClick={handleBack}
-              className="text-white hover:bg-white/20 p-1"
+              className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
             >
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              뒤로가기
-            </Button>
+              <ArrowLeft className="w-6 h-6 text-gray-700" />
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">⚽</span>
+              </div>
+              <span className="font-bold text-gray-900">MatchFit</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleShare}
+              className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+            >
+              <Share2 className="w-5 h-5 text-gray-600" />
+            </button>
+            <button
+              onClick={toggleFavorite}
+              className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+            >
+              <Heart className={`w-5 h-5 transition-colors ${isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
+            </button>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content */}
-      <div className="p-4 pb-20">
-        {/* 상단 정보 카드 */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <Badge className={`${getStatusColor(post.status)} text-white`}>
-                  {getStatusText(post.status)}
-                </Badge>
-                <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                  {getSportIcon(post.sports)} {getSportName(post.sports)}
-                </Badge>
-                {isAuthor && (
-                  <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-                    내 모집글
-                  </Badge>
-                )}
+      {/* Hero Section */}
+      <section className="relative px-6 py-12 bg-gradient-to-br from-gray-50 to-white">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center gap-3 mb-6">
+            <Badge className={`${getStatusColor(post.status)} text-white px-4 py-2 rounded-full font-semibold`}>
+              {getStatusText(post.status)}
+            </Badge>
+            <Badge className="bg-black text-white px-4 py-2 rounded-full font-semibold">
+              {getSportIcon(post.sports)} {getSportName(post.sports)}
+            </Badge>
+            {isAuthor && (
+              <Badge className="bg-purple-500 text-white px-4 py-2 rounded-full font-semibold">
+                내 모집글
+              </Badge>
+            )}
+          </div>
+          
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-tight">
+            {post.title}
+          </h1>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center">
+                <MapPin className="w-6 h-6 text-red-600" />
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={toggleFavorite}
-                  className="p-1"
-                >
-                  <Heart className={`w-5 h-5 ${isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleShare}
-                  className="p-1"
-                >
-                  <Share2 className="w-5 h-5" />
-                </Button>
+              <div>
+                <p className="text-sm text-gray-500 font-medium">위치</p>
+                <p className="text-lg font-semibold text-gray-900">{post.location}</p>
               </div>
             </div>
-
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">{post.title}</h1>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div className="flex items-center gap-2 text-gray-600">
-                <MapPin className="w-4 h-4 text-red-500" />
-                <span>{post.location}</span>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
+                <Clock className="w-6 h-6 text-blue-600" />
               </div>
-              <div className="flex items-center gap-2 text-gray-600">
-                <Clock className="w-4 h-4 text-blue-500" />
-                <span>{formatTimeToKorean12Hour(post.date)}</span>
-              </div>
-              <div className="flex items-center gap-2 text-gray-600">
-                <Users className="w-4 h-4 text-green-500" />
-                <span>현재 {post.currentPeople}명 / 최대 {post.maxPeople}명</span>
-              </div>
-              <div className="flex items-center gap-2 text-gray-600">
-                <span className="w-4 h-4 text-center">👫</span>
-                <span>{getGenderText(post.gender)}</span>
+              <div>
+                <p className="text-sm text-gray-500 font-medium">일시</p>
+                <p className="text-lg font-semibold text-gray-900">{formatTimeToKorean12Hour(post.date)}</p>
               </div>
             </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
-              <span className="text-blue-600">😊</span>
-              <span className="text-blue-800">무더위엔 내 몸상태를 세심하게 살피고 즐겁게 뛰어요</span>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center">
+                <Users className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 font-medium">인원</p>
+                <p className="text-lg font-semibold text-gray-900">현재 {post.currentPeople}명 / 최대 {post.maxPeople}명</p>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* 가격 정보 */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <h3 className="text-xl font-semibold mb-4">참가비</h3>
-            <div className="text-3xl font-bold text-red-600 mb-2">
-              {post.cost.toLocaleString()}원
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center">
+                <span className="text-2xl">👫</span>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 font-medium">성별</p>
+                <p className="text-lg font-semibold text-gray-900">{getGenderText(post.gender)}</p>
+              </div>
             </div>
-            <div className="text-gray-600 mb-4">/ 1인당</div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* 매치 포인트 */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <h3 className="text-xl font-semibold mb-4">매치 포인트</h3>
-            <div className="grid grid-cols-4 gap-4">
-              {[
-                { icon: "😊", text: "모든 레벨" },
-                { icon: "👫", text: getGenderText(post.gender) },
-                { icon: "👥", text: `${post.maxPeople}명 모집` },
-                { icon: "🏃", text: "초보자 환영" }
-              ].map((item, idx) => (
-                <div key={idx} className="bg-gray-50 border rounded-lg p-4 text-center hover:border-blue-500 transition-colors">
-                  <span className="text-2xl block mb-2">{item.icon}</span>
-                  <div className="text-sm font-medium text-gray-800">{item.text}</div>
-                </div>
-              ))}
+          {/* 참가비 */}
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-8 text-center">
+            <div className="mb-2">
+              <span className="text-sm font-medium text-gray-600">참가비</span>
             </div>
-          </CardContent>
-        </Card>
+            <div className="text-4xl font-bold text-gray-900 mb-2">
+              {post.cost === 0 ? '무료' : `${post.cost.toLocaleString()}원`}
+            </div>
+            {post.cost > 0 && (
+              <div className="text-gray-600">/ 1인당</div>
+            )}
+          </div>
+        </div>
+      </section>
 
-        {/* 상세 설명 */}
-        {post.description && (
-          <Card className="mb-6">
-            <CardContent className="p-6">
-              <h3 className="text-xl font-semibold mb-4">상세 설명</h3>
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+
+      {/* 매치 포인트 */}
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-6">
+          <h2 className="text-3xl font-bold text-gray-900 mb-12 text-center">매치 포인트</h2>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {[
+              { icon: "😊", text: "모든 레벨", desc: "초보자부터 고수까지" },
+              { icon: "👫", text: getGenderText(post.gender), desc: "성별 구분" },
+              { icon: "👥", text: `${post.maxPeople}명 모집`, desc: "적정 인원" },
+              { icon: "🏃", text: "초보자 환영", desc: "누구나 참여 가능" }
+            ].map((item, idx) => (
+              <div key={idx} className="bg-white rounded-2xl p-6 text-center hover:shadow-lg transition-shadow border border-gray-200">
+                <span className="text-4xl block mb-4">{item.icon}</span>
+                <h3 className="font-semibold text-gray-900 mb-2">{item.text}</h3>
+                <p className="text-sm text-gray-600">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 상세 설명 */}
+      {post.description && (
+        <section className="py-16 bg-white">
+          <div className="max-w-4xl mx-auto px-6">
+            <h2 className="text-3xl font-bold text-gray-900 mb-8">상세 설명</h2>
+            <div className="bg-gray-50 rounded-3xl p-8">
+              <p className="text-gray-700 text-lg leading-relaxed whitespace-pre-wrap">
                 {post.description}
               </p>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          </div>
+        </section>
+      )}
 
-        {/* 구장 정보 */}
-        {post.imageUrl && (
-          <Card className="mb-6">
-            <CardContent className="p-6">
-              <h3 className="text-xl font-semibold mb-4">구장 정보</h3>
-              
-              {/* 구장 이미지*/}
-              {post.imageUrl && (
-                <div className="mb-6">
-                  <div className="relative overflow-hidden rounded-xl shadow-sm bg-gray-100 max-w-5xl mx-auto">
-                    <img 
-                      src={post.imageUrl} 
-                      alt="구장 사진" 
-                      className="w-full h-auto object-contain"
-                      style={{
-                        imageRendering: 'high-quality',
-                        imageRendering: '-webkit-optimize-contrast',
-                        imageRendering: 'crisp-edges'
-                      }}
-                      loading="lazy"
-                      onLoad={(e) => {
-                        // 이미지 로드 완료 시 선명도 향상
-                        const img = e.target as HTMLImageElement;
-                        img.style.filter = 'contrast(1.05) brightness(1.02) saturate(1.1)';
-                      }}
-                      onError={(e) => {
-                        const img = e.target as HTMLImageElement;
-                        img.style.display = 'none';
-                        const placeholder = img.parentElement?.querySelector('.image-placeholder');
-                        if (placeholder) {
-                          (placeholder as HTMLElement).style.display = 'flex';
-                        }
-                      }}
-                    />
-                    <div className="image-placeholder absolute inset-0 hidden items-center justify-center bg-gray-200 text-gray-500">
-                      <div className="text-center">
-                        <span className="text-3xl mb-2 block">🏟️</span>
-                        <span className="text-sm">구장 이미지를 불러올 수 없습니다</span>
-                      </div>
-                    </div>
+      {/* 구장 정보 */}
+      {post.imageUrl && (
+        <section className="py-16 bg-gray-50">
+          <div className="max-w-4xl mx-auto px-6">
+            <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">구장 정보</h2>
+            
+            <div className="bg-white rounded-3xl overflow-hidden shadow-lg">
+              <div className="relative">
+                <img 
+                  src={post.imageUrl} 
+                  alt="구장 사진" 
+                  className="w-full h-80 object-cover"
+                  style={{
+                    imageRendering: 'high-quality',
+                    imageRendering: '-webkit-optimize-contrast',
+                    imageRendering: 'crisp-edges'
+                  }}
+                  loading="lazy"
+                  onLoad={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    img.style.filter = 'contrast(1.05) brightness(1.02) saturate(1.1)';
+                  }}
+                  onError={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    img.style.display = 'none';
+                    const placeholder = img.parentElement?.querySelector('.image-placeholder');
+                    if (placeholder) {
+                      (placeholder as HTMLElement).style.display = 'flex';
+                    }
+                  }}
+                />
+                <div className="image-placeholder absolute inset-0 hidden items-center justify-center bg-gray-200 text-gray-500">
+                  <div className="text-center">
+                    <span className="text-6xl mb-4 block">🏟️</span>
+                    <span className="text-lg font-medium">구장 이미지를 불러올 수 없습니다</span>
                   </div>
                 </div>
-              )}
-
-          </CardContent>
-        </Card>)}
-      </div>
-
-      {/* Floating Action Buttons - 작성자가 아닌 경우에만 표시 */}
-      {!isAuthor && (
-        <div className="fixed bottom-16 right-4 flex flex-col gap-2">
-          <Button
-            onClick={handleJoinEvent}
-            disabled={post.status !== 'OPEN' || isJoined}
-            className={`shadow-lg hover:shadow-xl transition-shadow ${
-              post.status === 'OPEN' && !isJoined
-                ? 'bg-blue-500 hover:bg-blue-600'
-                : 'bg-gray-400 cursor-not-allowed'
-            }`}
-          >
-            {isJoined ? '참가 완료' : post.status === 'OPEN' ? '참가 신청하기' : '모집 마감'}
-          </Button>
-        </div>
+              </div>
+              
+              
+            </div>
+          </div>
+        </section>
       )}
+
+      {/* 주의사항 */}
+      <section className="py-16 bg-white">
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-3xl p-8">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
+                <span className="text-2xl">😊</span>
+              </div>
+              <h3 className="text-xl font-semibold text-blue-900">함께 지켜요</h3>
+            </div>
+            <p className="text-blue-800 text-lg leading-relaxed">
+              무더위엔 내 몸상태를 세심하게 살피고 즐겁게 뛰어요. 
+              안전한 운동을 위해 충분한 수분 섭취와 적절한 휴식을 잊지 마세요! 🏃‍♂️💧
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Progress Bar - 참가 현황 */}
+      <section className="py-8">
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-900">참가 현황</h3>
+            <span className="text-sm text-gray-600">
+              {post.currentPeople}/{post.maxPeople}명
+            </span>
+          </div>
+          
+          <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
+            <div 
+              className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-500"
+              style={{ width: `${Math.min((post.currentPeople / post.maxPeople) * 100, 100)}%` }}
+            ></div>
+          </div>
+          
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>모집률 {Math.round((post.currentPeople / post.maxPeople) * 100)}%</span>
+            <span>
+              {post.maxPeople - post.currentPeople > 0 
+                ? `${post.maxPeople - post.currentPeople}명 더 필요` 
+                : '모집 완료'}
+            </span>
+          </div>
+        </div>
+      </section>
+      
+      {/* CTA Section - 작성자가 아닌 경우에만 표시 */}
+      {!isAuthor && (
+        <section className="py-16 bg-gradient-to-r from-gray-900 to-black text-white">
+          <div className="max-w-4xl mx-auto px-6 text-center">
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              지금 바로 참여하세요
+            </h2>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <button
+                onClick={handleJoinEvent}
+                disabled={post.status !== 'OPEN' || isJoined}
+                className={`px-12 py-4 rounded-2xl font-bold text-lg transition-all duration-300 ${
+                  post.status === 'OPEN' && !isJoined
+                    ? 'bg-white text-black hover:bg-gray-100 hover:scale-105 shadow-lg'
+                    : 'bg-gray-600 text-gray-300 cursor-not-allowed'
+                }`}
+              >
+                {isJoined ? '신청 완료' : post.status === 'OPEN' ? '참가 신청하기' : '모집 마감'}
+              </button>
+              
+              <button
+                onClick={toggleFavorite}
+                className="flex items-center gap-2 px-6 py-3 border border-white/30 text-white rounded-2xl hover:bg-white/10 transition-colors"
+              >
+                <Heart className={`w-5 h-5 ${isFavorited ? 'fill-red-400 text-red-400' : ''}`} />
+                <span className="font-medium">{isFavorited ? '찜 완료' : '찜하기'}</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      
     </div>
   )
 }
