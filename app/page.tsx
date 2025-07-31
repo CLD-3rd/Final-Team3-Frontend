@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,7 +10,6 @@ import { Search, MapPin, Clock, Users, Bell, User, Heart, Calendar, List, Chevro
 import Link from "next/link"
 import CalendarView from "@/components/calendar-view"
 import { apiClient } from "@/lib/api-client"
-import { useRouter } from "next/navigation";
 import type { Post } from "@/types/api"
 
 const sports = [
@@ -78,27 +78,8 @@ function extractMainRegion(town: string): string | undefined {
   // 2. regions 배열에서 찾기
   return regions.find(region => town.startsWith(region));
 }
-/*
-// 수정한 부분
-function parseDateWithTimeZone(dateStr: string): Date {
-  // 1. 이미 Z(UTC)나 +09:00, -03:00 등이 붙어 있으면 그대로 사용
-  if (/[Zz]|([+-]\d{2}:?\d{2})$/.test(dateStr)) {
-    return new Date(dateStr);
-  }
-  // 2. 초 단위 없는 경우(예: "2025-07-29T18:30") → "2025-07-29T18:30:00+09:00"
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dateStr)) {
-    return new Date(dateStr + ":00+09:00");
-  }
-  // 3. 초 단위 있지만 타임존 없는 경우(예: "2025-07-29T18:30:00")
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(dateStr)) {
-    return new Date(dateStr + "+09:00");
-  }
-  // 4. 그 외(공백 등) - 최대한 ISO로 맞추기
-  return new Date(dateStr.replace(" ", "T") + "+09:00");
-}*/
 
 const getAuthToken = () => localStorage.getItem("auth_token");
-
 
 export default function MainPage() {
   const router = useRouter();
@@ -172,7 +153,8 @@ export default function MainPage() {
   useEffect(() => {
     fetchPosts()
     fetchFavorites()
-  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate]) 
+  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate])
+  
 
   const fetchPosts = async () => {
     try {
@@ -252,16 +234,17 @@ export default function MainPage() {
     if (!regionMatch) return false;
 
     // 2. 날짜 필터 + 현재 시각 이후 모집글만
+    // 현재 시각 이후 모집글만 (항상 적용)
+    if (post.date) {
+      const postDateTime = new Date(post.date.replace(" ", "T"));
+      // 현재 시각 이후만 남김
+      if (postDateTime <= now) return false;
+    }
+
+    // 특정 날짜가 선택된 경우 해당 날짜만 필터링
     if (selectedDate) {
       const postDateStr = post.date?.split("T")[0];
       if (postDateStr !== selectedDate) return false;
-
-      // "YYYY-MM-DDTHH:mm:ss" 또는 "YYYY-MM-DD HH:mm:ss"
-      if (post.date) {
-        const postDateTime = new Date(post.date.replace(" ", "T"));
-        // 현재 시각 이후만 남김
-        if (postDateTime <= now) return false;
-      }
     }
     // selectedDate가 없으면 모두 통과
     return true;
