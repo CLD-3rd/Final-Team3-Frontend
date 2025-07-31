@@ -191,7 +191,7 @@ export default function CreatePostPage() {
     <div className="min-h-screen bg-gradient-to-b from-blue-500 to-cyan-400">
       {/* Header */}
       <div className="flex items-center justify-between p-4 text-white">
-        <Link href="/my-posts">
+        <Link href="/">
           <ArrowLeft className="w-6 h-6" />
         </Link>
         <div className="flex-1 flex justify-center">
