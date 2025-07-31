@@ -81,7 +81,7 @@ function MyPostsContentComponent() {
 
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null
-    return localStorage.getItem("auth_token") || localStorage.getItem("accessToken")
+    return localStorage.getItem("auth_token") 
   }
 
   const addToast = (message: string, type: 'success' | 'error') => {
@@ -99,10 +99,6 @@ function MyPostsContentComponent() {
 
   const makeAuthenticatedRequest = async (url: string, options?: RequestInit) => {
     const token = getAuthToken()
-    if (!token) {
-      router.push('/login')
-      throw new Error("인증 토큰이 없습니다. 다시 로그인해주세요.")
-    }
 
     try {
       const response = await fetch(url, {

@@ -462,7 +462,7 @@ export default function EditPostPage() {
                 <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-sm">⚽</span>
                 </div>
-                <span className="font-bold text-gray-900">스포츠 메이트</span>
+                <span className="font-bold text-gray-900">MatchFit</span>
               </div>
             </div>
           </div>
@@ -564,7 +564,7 @@ export default function EditPostPage() {
               <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">✏️</span>
               </div>
-              <span className="font-bold text-gray-900">스포츠 메이트</span>
+              <span className="font-bold text-gray-900">MatchFit</span>
             </div>
           </div>
         </div>

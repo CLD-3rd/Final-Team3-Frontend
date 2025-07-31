@@ -727,18 +727,14 @@ export default function MainPage() {
 
       <section className="py-24 bg-gradient-to-r from-gray-900 to-black text-white">
         <div className="max-w-4xl mx-auto text-center px-6">
-          <h2 className="text-4xl md:text-5xl font-bold mb-8">
-            지금 시작해보세요
-          </h2>
-          <p className="text-xl text-gray-300 mb-12 leading-relaxed">
-            운동이 더 즐거워지는 순간을 경험해보세요.<br/>
-            새로운 친구들과 함께하는 특별한 시간이 기다리고 있어요.
-          </p>
+          <h4 className="text-4xl md:text-5xl font-bold mb-8">
+            운동 메이트를 모집해보세요
+          </h4>
           <button
             onClick={handleCreatePost}
             className="inline-flex items-center gap-3 bg-white text-black px-12 py-4 rounded-full text-xl font-bold hover:bg-gray-100 transition-all duration-300 hover:scale-105"
           >
-            첫 모집글 작성하기
+            모집글 작성하기
             <ArrowRight className="w-6 h-6" />
           </button>
         </div>
