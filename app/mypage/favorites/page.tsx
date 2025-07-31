@@ -6,8 +6,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, MapPin, Clock, Users, Heart, CheckCircle, XCircle, RefreshCw } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
-// API 응답 타입 정의
 interface FollowPost {
   postId: number
   title: string
@@ -27,14 +27,12 @@ interface ApiResponse<T> {
   data: T
 }
 
-// 토스트 메시지 타입
 interface ToastMessage {
   id: number
   message: string
   type: 'success' | 'error'
 }
 
-// 스포츠 한글 매핑
 const sportsMapping: { [key: string]: string } = {
   FOOTBALL: "축구",
   TENNIS: "테니스",
@@ -44,7 +42,6 @@ const sportsMapping: { [key: string]: string } = {
   BADMINTON: "배드민턴"
 }
 
-// 스포츠별 색상 매핑
 const getSportColor = (sport: string) => {
   switch (sport) {
     case "TENNIS":
@@ -64,7 +61,6 @@ const getSportColor = (sport: string) => {
   }
 }
 
-// 날짜 포맷팅 함수
 const formatDate = (dateString: string) => {
   const date = new Date(dateString)
   const month = date.getMonth() + 1
@@ -78,13 +74,11 @@ const formatDate = (dateString: string) => {
   return `${month}월 ${day}일 ${period} ${hour12}시${minutes > 0 ? ` ${minutes}분` : ""}`
 }
 
-// 가격 포맷팅 함수
 const formatPrice = (price: number) => {
   if (price === 0) return "무료"
   return `${price.toLocaleString()}원`
 }
 
-// 토스트 컴포넌트
 const Toast = ({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) => (
   <div className={`fixed top-20 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-lg transition-all backdrop-blur-sm ${
     type === 'success' ? 'bg-blue-600 text-white' : 'bg-red-500 text-white'
@@ -102,40 +96,39 @@ const Toast = ({ message, type, onClose }: { message: string; type: 'success' | 
 )
 
 export default function FavoritesPage() {
+  const router = useRouter()
   const [followPosts, setFollowPosts] = useState<FollowPost[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const [mounted, setMounted] = useState(false)
 
-  // JWT 토큰 가져오기
   const getToken = () => {
+    if (typeof window === 'undefined') return null
     return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token')
   }
 
-  // 토스트 메시지 추가
   const addToast = (message: string, type: 'success' | 'error') => {
     const id = Date.now()
     setToasts(prev => [...prev, { id, message, type }])
     
-    // 3초 후 자동 제거
     setTimeout(() => {
       setToasts(prev => prev.filter(toast => toast.id !== id))
     }, 3000)
   }
 
-  // 토스트 메시지 제거
   const removeToast = (id: number) => {
     setToasts(prev => prev.filter(toast => toast.id !== id))
   }
 
-  // 찜 목록 조회
   const fetchFollowList = async () => {
     try {
       setLoading(true)
       const token = getToken()
       
       if (!token) {
-        throw new Error('로그인이 필요합니다.')
+        router.push('/login')
+        return
       }
 
       const response = await fetch('http://localhost:8080/api/user/follow', {
@@ -147,6 +140,12 @@ export default function FavoritesPage() {
       })
 
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem('auth_token')
+          sessionStorage.removeItem('auth_token')
+          router.push('/login')
+          return
+        }
         throw new Error('찜 목록을 불러오는데 실패했습니다.')
       }
 
@@ -160,13 +159,12 @@ export default function FavoritesPage() {
     }
   }
 
-  // 찜 토글 (찜 취소)
   const toggleFavorite = async (postId: number) => {
     try {
       const token = getToken()
       
       if (!token) {
-        addToast('로그인이 필요합니다.', 'error')
+        router.push('/login')
         return
       }
 
@@ -179,16 +177,20 @@ export default function FavoritesPage() {
       })
 
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem('auth_token')
+          sessionStorage.removeItem('auth_token')
+          router.push('/login')
+          return
+        }
         throw new Error('찜 상태 변경에 실패했습니다.')
       }
 
       const result: ApiResponse<{ postId: number; followed: boolean }> = await response.json()
       
-      // 백엔드 성공 메시지 표시
       addToast(result.message, 'success')
       
       if (!result.data.followed) {
-        // 찜이 취소되었으면 목록에서 제거
         setFollowPosts(prev => prev.filter(post => post.postId !== postId))
       }
     } catch (err) {
@@ -196,13 +198,23 @@ export default function FavoritesPage() {
     }
   }
 
-  // 컴포넌트 마운트 시 찜 목록 조회
   useEffect(() => {
-    fetchFollowList()
+    setMounted(true)
   }, [])
 
-  // 로딩 상태
-  if (loading) {
+  useEffect(() => {
+    if (!mounted) return
+
+    const token = getToken()
+    if (!token) {
+      router.push('/login')
+      return
+    }
+
+    fetchFollowList()
+  }, [mounted, router])
+
+  if (!mounted || loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
@@ -213,7 +225,6 @@ export default function FavoritesPage() {
     )
   }
 
-  // 에러 상태
   if (error) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -245,7 +256,6 @@ export default function FavoritesPage() {
         />
       ))}
 
-      {/* Header */}
       <div className="sticky top-0 bg-white z-10 px-5 py-4 border-b border-gray-100">
         <div className="flex items-center">
           <Link href="/mypage" className="p-2 -ml-2 mr-2">
