@@ -261,7 +261,7 @@ export default function ProfileEditPage() {
     <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-100 z-50">
-        <div className="flex items-center justify-between h-14 px-4">
+        <div className="flex items-center justify-between h-14 px-6 max-w-2xl mx-auto">
           <Link href="/mypage" className="flex items-center justify-center w-10 h-10 -ml-2 rounded-full hover:bg-gray-50 transition-colors">
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </Link>
@@ -270,7 +270,7 @@ export default function ProfileEditPage() {
         </div>
       </div>
 
-      <div className="px-4 py-6 pb-24 max-w-md mx-auto">
+      <div className="px-6 py-8 pb-24 max-w-2xl mx-auto">
         <div className="space-y-8">
           <div className="space-y-3">
             <Label className="text-sm font-semibold text-gray-900">이메일</Label>
@@ -279,7 +279,7 @@ export default function ProfileEditPage() {
                 value={formData.email} 
                 readOnly 
                 disabled 
-                className="h-12 text-base bg-gray-50 border-0 text-gray-500 font-medium pl-4 rounded-2xl"
+                className="h-14 text-base bg-gray-50 border-0 text-gray-500 font-medium pl-4 rounded-2xl"
               />
             </div>
             <p className="text-xs text-gray-400 pl-1">이메일은 변경할 수 없어요</p>
@@ -292,7 +292,7 @@ export default function ProfileEditPage() {
                 value={formData.town} 
                 readOnly 
                 disabled 
-                className="h-12 text-base bg-gray-50 border-0 text-gray-500 font-medium pl-4 rounded-2xl"
+                className="h-14 text-base bg-gray-50 border-0 text-gray-500 font-medium pl-4 rounded-2xl"
               />
             </div>
             <p className="text-xs text-gray-400 pl-1">동네는 변경할 수 없어요</p>
@@ -300,20 +300,20 @@ export default function ProfileEditPage() {
 
           <div className="space-y-3">
             <Label className="text-sm font-semibold text-gray-900">닉네임 *</Label>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <div className="flex-1 relative">
                 <Input
                   placeholder="닉네임 입력 (한글/영문/숫자 2-10자)"
                   value={formData.nickname}
                   onChange={(e) => handleNicknameChange(e.target.value)}
-                  className="h-12 text-base border-2 border-gray-100 focus:border-blue-500 rounded-2xl pl-4 transition-all duration-200"
+                  className="h-14 text-base border-2 border-gray-100 focus:border-blue-500 rounded-2xl pl-4 transition-all duration-200"
                 />
               </div>
               <Button 
                 variant="outline" 
                 onClick={handleCheckNickname}
                 disabled={checkingNickname || !formData.nickname.trim()}
-                className="h-12 px-4 bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl font-semibold text-sm whitespace-nowrap disabled:bg-gray-300 disabled:text-gray-500 transition-all duration-200"
+                className="h-14 px-6 bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl font-semibold text-sm whitespace-nowrap disabled:bg-gray-300 disabled:text-gray-500 transition-all duration-200"
               >
                 {checkingNickname ? "확인중" : "중복확인"}
               </Button>
@@ -341,7 +341,7 @@ export default function ProfileEditPage() {
               onChange={(e) => setFormData(prev => ({ ...prev, age: parseInt(e.target.value) || 0 }))}
               min="14"
               max="100"
-              className="h-12 text-base border-2 border-gray-100 focus:border-blue-500 rounded-2xl pl-4 transition-all duration-200"
+              className="h-14 text-base border-2 border-gray-100 focus:border-blue-500 rounded-2xl pl-4 transition-all duration-200"
             />
             {formData.age > 0 && (formData.age < 14 || formData.age > 100) && shouldShowValidationErrors && (
               <div className="flex items-center gap-2 pl-1 text-red-500">
@@ -353,14 +353,14 @@ export default function ProfileEditPage() {
 
           <div className="space-y-4">
             <Label className="text-sm font-semibold text-gray-900">선호 종목 *</Label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-6 gap-4">
               {sports.map((sport) => (
                 <Button
                   key={sport.id}
                   type="button"
                   variant="outline"
                   onClick={() => handleSportSelect(sport.id)}
-                  className={`h-20 flex flex-col items-center justify-center gap-2 border-2 rounded-2xl transition-all duration-200 ${
+                  className={`h-24 flex flex-col items-center justify-center gap-2 border-2 rounded-2xl transition-all duration-200 ${
                     formData.selectedSport === sport.id
                       ? "bg-blue-50 border-blue-500 text-blue-700"
                       : "border-gray-100 text-gray-700 hover:border-gray-200 hover:bg-gray-50"
@@ -371,14 +371,6 @@ export default function ProfileEditPage() {
                 </Button>
               ))}
             </div>
-            {formData.selectedSport && (
-              <div className="flex items-center gap-2 pl-1 text-blue-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div>
-                <p className="text-xs font-medium">
-                  {sports.find(s => s.id === formData.selectedSport)?.name} 선택됨
-                </p>
-              </div>
-            )}
             {!formData.selectedSport && shouldShowValidationErrors && (
               <div className="flex items-center gap-2 pl-1 text-red-500">
                 <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
@@ -389,8 +381,8 @@ export default function ProfileEditPage() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 p-4">
-        <div className="max-w-md mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 p-6">
+        <div className="max-w-2xl mx-auto">
           <Button
             onClick={handleSave}
             disabled={!isFormValid || saving}
