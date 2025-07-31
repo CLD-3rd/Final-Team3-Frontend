@@ -416,7 +416,9 @@ export default function EditPostPage() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-blue-500 to-cyan-400">
         <div className="flex items-center justify-between p-4 text-white">
-          <ArrowLeft className="w-6 h-6" />
+          <Link href="/">
+            <ArrowLeft className="w-6 h-6" />
+          </Link>
           <h1 className="text-lg font-semibold">모집글 수정</h1>
           <div className="w-6 h-6"></div>
         </div>
@@ -477,7 +479,7 @@ export default function EditPostPage() {
     <div className="min-h-screen bg-gradient-to-b from-blue-500 to-cyan-400">
       {/* Header */}
       <div className="flex items-center justify-between p-4 text-white">
-        <Link href={`/posts/${postId}`}>
+        <Link href={`/mypage/my-posts`}>
           <ArrowLeft className="w-6 h-6" />
         </Link>
         <div className="flex-1 flex justify-center">
