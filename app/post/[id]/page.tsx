@@ -449,7 +449,7 @@ export default function EventDetail({}: EventDetailProps) {
           </div>
           <div className="flex items-center gap-2">
             <Bell className="w-6 h-6" />
-            <Link href="/login">
+            <Link href="/mypage">
               <User className="w-6 h-6" />
             </Link>
           </div>

@@ -15,10 +15,13 @@ import { Search } from "lucide-react"
 const townOptions = [
   { label: "서울", value: "SEOUL" },
   { label: "경기", value: "GYEONGGI" },
+  { label: "강원", value: "GANGWON"},
+  { label: "대전", value: "DAEJEON" },
   { label: "대구", value: "DAEGU" },
   { label: "인천", value: "INCHEON" },
   { label: "광주", value: "GWANGJU" },
   { label: "울산", value: "ULSAN" },
+  { label: "부산", value: "BUSAN"},
   { label: "세종", value: "SEJONG" },
   { label: "충남", value: "CHUNGNAM" },
   { label: "충북", value: "CHUNGBUK" },
@@ -27,7 +30,6 @@ const townOptions = [
   { label: "경북", value: "GYEONGBUK" },
   { label: "경남", value: "GYEONGNAM" },
   { label: "제주", value: "JEJU" },
-  { label: "대전", value: "DAEJEON" },
 ]
 
 const sports = [
@@ -191,7 +193,7 @@ export default function CreatePostPage() {
     <div className="min-h-screen bg-gradient-to-b from-blue-500 to-cyan-400">
       {/* Header */}
       <div className="flex items-center justify-between p-4 text-white">
-        <Link href="/my-posts">
+        <Link href="/">
           <ArrowLeft className="w-6 h-6" />
         </Link>
         <div className="flex-1 flex justify-center">
