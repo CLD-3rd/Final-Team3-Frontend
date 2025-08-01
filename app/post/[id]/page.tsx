@@ -23,7 +23,7 @@ interface PostData {
   date: string
   location: string
   bookmarked: boolean
-  userEmail?: string // 작성자 이메일 추가
+  userEmail?: string 
 }
 
 interface ToastMessage {
@@ -64,6 +64,7 @@ export default function EventDetail() {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
   const [isAuthor, setIsAuthor] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   // 인증 토큰 가져오기 및 API 호출 함수
   const getAuthToken = () => localStorage.getItem("auth_token") || localStorage.getItem("accessToken")
@@ -108,6 +109,7 @@ export default function EventDetail() {
     setToasts(prev => prev.filter(toast => toast.id !== id))
   }
 
+  // 인증이 필요한 API 호출
   const makeAuthenticatedRequest = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken()
     if (!token) throw new Error("인증 토큰이 없습니다.")
@@ -135,6 +137,28 @@ export default function EventDetail() {
     return response
   }
 
+  // 비인증 API 호출
+  const makeGuestRequest = async (url: string, options: RequestInit = {}) => {
+    return fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    })
+  }
+
+  // 로그인 상태 확인
+  useEffect(() => {
+    const token = getAuthToken()
+    const userEmail = getEmailFromToken()
+    
+    setIsLoggedIn(!!token)
+    if (userEmail) {
+      setCurrentUserEmail(userEmail)
+    }
+  }, [])
+
   // 포스트 데이터 로딩
   useEffect(() => {
     const fetchPost = async () => {
@@ -148,13 +172,20 @@ export default function EventDetail() {
         setLoading(true)
         setError("")
         
-        // JWT에서 이메일 추출
-        const userEmail = getEmailFromToken()
-        if (userEmail) {
-          setCurrentUserEmail(userEmail)
-        }
+        let response
+        const token = getAuthToken()
         
-        const response = await makeAuthenticatedRequest(`http://localhost:8080/api/posts/${postId}`)
+        // 로그인한 사용자는 인증된 요청, 비로그인은 게스트 요청
+        if (token) {
+          try {
+            response = await makeAuthenticatedRequest(`http://localhost:8080/api/posts/${postId}`)
+          } catch (authError) {
+            // 인증 실패 시 게스트 요청으로 대체
+            response = await makeGuestRequest(`http://localhost:8080/api/posts/${postId}`)
+          }
+        } else {
+          response = await makeGuestRequest(`http://localhost:8080/api/posts/${postId}`)
+        }
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
@@ -164,11 +195,15 @@ export default function EventDetail() {
         
         if (data && data.code === "POST201" && data.data) {
           setPost(data.data)
-          setIsFavorited(data.data.bookmarked || false)
           
-          // 작성자 확인 - JWT 이메일과 모집글 작성자 이메일 비교
-          if (userEmail && data.data.userEmail) {
-            setIsAuthor(userEmail === data.data.userEmail)
+          if (isLoggedIn) {
+            setIsFavorited(data.data.bookmarked || false)
+            
+            // 작성자 확인 - JWT 이메일과 모집글 작성자 이메일 비교
+            const userEmail = getEmailFromToken()
+            if (userEmail && data.data.userEmail) {
+              setIsAuthor(userEmail === data.data.userEmail)
+            }
           }
         } else {
           throw new Error("게시글을 찾을 수 없습니다.")
@@ -184,7 +219,7 @@ export default function EventDetail() {
     if (postId) {
       fetchPost()
     }
-  }, [postId])
+  }, [postId, isLoggedIn])
 
   const handleBack = () => {
     router.back()
@@ -212,11 +247,12 @@ export default function EventDetail() {
   }
 
   const toggleFavorite = async () => {
-    const token = getAuthToken()
-    if (!token) {
+    if (!isLoggedIn) {
       router.push('/login')
       return
     }
+
+    const token = getAuthToken()
 
     try {
       const response = await makeAuthenticatedRequest(`http://localhost:8080/api/posts/${postId}/follow`, {
@@ -287,6 +323,11 @@ export default function EventDetail() {
   }
 
   const handleJoinEvent = async () => {
+    if (!isLoggedIn) {
+      router.push('/login')
+      return
+    }
+
     const token = getAuthToken()
     if (!token) {
       router.push('/login')
@@ -502,13 +543,16 @@ export default function EventDetail() {
               onClick={toggleFavorite}
               className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
             >
-              <Heart className={`w-5 h-5 transition-colors ${isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
+              <Heart className={`w-5 h-5 transition-colors ${
+                isLoggedIn && isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-600'
+              }`} />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
+      
+
       <section className="relative px-6 py-12 bg-gradient-to-br from-gray-50 to-white">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
@@ -518,7 +562,7 @@ export default function EventDetail() {
             <Badge className="bg-black text-white px-4 py-2 rounded-full font-semibold">
               {getSportIcon(post.sports)} {getSportName(post.sports)}
             </Badge>
-            {isAuthor && (
+            {isLoggedIn && isAuthor && (
               <Badge className="bg-purple-500 text-white px-4 py-2 rounded-full font-semibold">
                 내 모집글
               </Badge>
@@ -658,8 +702,6 @@ export default function EventDetail() {
                   </div>
                 </div>
               </div>
-              
-              
             </div>
           </div>
         </section>
@@ -683,7 +725,7 @@ export default function EventDetail() {
         </div>
       </section>
 
-      {/* Progress Bar - 참가 현황 */}
+      {/* 참가 현황 */}
       <section className="py-8">
         <div className="max-w-4xl mx-auto px-6">
           <div className="flex items-center justify-between mb-4">
@@ -711,8 +753,8 @@ export default function EventDetail() {
         </div>
       </section>
       
-      {/* CTA Section - 작성자가 아닌 경우에만 표시 */}
-      {!isAuthor && (
+      {/* 작성자가 아닌 경우에만 표시 */}
+      {(!isLoggedIn || !isAuthor) && (
         <section className="py-16 bg-gradient-to-r from-gray-900 to-black text-white">
           <div className="max-w-4xl mx-auto px-6 text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-6">
@@ -729,21 +771,37 @@ export default function EventDetail() {
                     : 'bg-gray-600 text-gray-300 cursor-not-allowed'
                 }`}
               >
-                {isJoined ? '신청 완료' : post.status === 'OPEN' ? '참가 신청하기' : '모집 마감'}
+                {!isLoggedIn 
+                  ? '로그인 후 참가신청' 
+                  : isJoined 
+                    ? '신청 완료' 
+                    : post.status === 'OPEN' 
+                      ? '참가 신청하기' 
+                      : '모집 마감'
+                }
               </button>
               
               <button
                 onClick={toggleFavorite}
                 className="flex items-center gap-2 px-6 py-3 border border-white/30 text-white rounded-2xl hover:bg-white/10 transition-colors"
               >
-                <Heart className={`w-5 h-5 ${isFavorited ? 'fill-red-400 text-red-400' : ''}`} />
-                <span className="font-medium">{isFavorited ? '찜 완료' : '찜하기'}</span>
+                <Heart className={`w-5 h-5 ${
+                  isLoggedIn && isFavorited ? 'fill-red-400 text-red-400' : ''
+                }`} />
+                <span className="font-medium">
+                  {!isLoggedIn 
+                    ? '로그인 후 찜하기' 
+                    : isFavorited 
+                      ? '찜 완료' 
+                      : '찜하기'
+                  }
+                </span>
               </button>
             </div>
+
           </div>
         </section>
       )}
-
       
     </div>
   )

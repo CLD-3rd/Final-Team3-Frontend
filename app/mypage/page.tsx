@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ChevronRight, User, Settings, FileText, Heart, List, ReceiptPoundSterling, Home, RefreshCw } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
-// API 응답 타입 정의
 interface ApiResponse<T> {
   code: string
   message: string
@@ -58,11 +58,10 @@ interface MyApplication {
   maxPeople: number
   location: string
   cost: number
-  status: "PENDING" | "APPROVED" | "REJECTED" // 내 신청 상태
-  postStatus: "OPEN" | "CLOSED" // 모집글의 상태 
+  status: "PENDING" | "APPROVED" | "REJECTED"
+  postStatus: "OPEN" | "CLOSED"
 }
 
-// 스포츠 한글 매핑
 const sportsMapping: { [key: string]: string } = {
   FOOTBALL: "축구",
   TENNIS: "테니스", 
@@ -100,16 +99,17 @@ const menuItems = [
 ]
 
 export default function MyPage() {
+  const router = useRouter()
   const [user, setUser] = useState<UserProfile | null>(null)
   const [stats, setStats] = useState({
     participatedCount: 0,
     myPostsCount: 0,
     favoritesCount: 0,
   })
-  const [userLoading, setUserLoading] = useState(true) // 유저 정보 로딩
-  const [statsLoading, setStatsLoading] = useState(true) // 통계 로딩
+  const [userLoading, setUserLoading] = useState(true)
+  const [statsLoading, setStatsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [mounted, setMounted] = useState(false) // 마운트 상태 추가
+  const [mounted, setMounted] = useState(false)
 
   
   const getToken = () => {
@@ -117,11 +117,11 @@ export default function MyPage() {
     return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token')
   }
 
-  // 인증된 요청 헬퍼
   const makeAuthenticatedRequest = async (url: string, options?: RequestInit) => {
     const token = getToken()
     if (!token) {
-      throw new Error('로그인이 필요합니다.')
+      router.push('/login')
+      return
     }
 
     const response = await fetch(url, {
@@ -134,41 +134,46 @@ export default function MyPage() {
     })
 
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('auth_token')
+        sessionStorage.removeItem('auth_token')
+        router.push('/login')
+        return
+      }
       throw new Error(`서버 오류: ${response.status}`)
     }
 
     return response
   }
 
-  // 유저 프로필 조회
   const fetchUserProfile = async (): Promise<UserProfile> => {
     const response = await makeAuthenticatedRequest('http://localhost:8080/api/user/mypage')
+    if (!response) return Promise.reject(new Error('인증이 필요합니다'))
     const result: ApiResponse<UserProfile> = await response.json()
     return result.data
   }
 
-  // 내 모집글 조회
   const fetchMyPosts = async (): Promise<MyPost[]> => {
     const response = await makeAuthenticatedRequest('http://localhost:8080/api/posts/mine')
+    if (!response) return Promise.reject(new Error('인증이 필요합니다'))
     const result: ApiResponse<MyPosts> = await response.json()
     return result.data.posts
   }
 
-  // 찜한 모집글 조회
   const fetchMyFollows = async (): Promise<FollowPost[]> => {
     const response = await makeAuthenticatedRequest('http://localhost:8080/api/user/follow')
+    if (!response) return Promise.reject(new Error('인증이 필요합니다'))
     const result: ApiResponse<FollowPost[]> = await response.json()
     return result.data
   }
 
-  // 내가 신청한 모집글 조회
   const fetchMyApplications = async (): Promise<MyApplication[]> => {
     const response = await makeAuthenticatedRequest('http://localhost:8080/api/posts/apply')
+    if (!response) return Promise.reject(new Error('인증이 필요합니다'))
     const result: ApiResponse<MyApplication[]> = await response.json()
     return result.data
   }
 
-  // 참여한 모임 수 계산
   const calculateParticipatedCount = (applications: MyApplication[]): number => {
     const now = new Date()
     return applications.filter(app => {
@@ -179,13 +184,18 @@ export default function MyPage() {
     }).length
   }
 
-  // 데이터 로딩: 마운트 후에만 실행
   useEffect(() => {
     setMounted(true) 
   }, [])
 
   useEffect(() => {
     if (!mounted) return
+
+    const token = getToken()
+    if (!token) {
+      router.push('/login')
+      return
+    }
 
     const loadData = async () => {
       try {
@@ -195,14 +205,12 @@ export default function MyPage() {
         setUser(userProfile)
         setUserLoading(false) 
 
-        // 나머지 데이터 병렬로 로드
         const [myPosts, follows, applications] = await Promise.all([
           fetchMyPosts(),
           fetchMyFollows(),
           fetchMyApplications(),
         ])
 
-        // 통계 계산 및 업데이트
         setStats({
           participatedCount: calculateParticipatedCount(applications),
           myPostsCount: myPosts.length,
@@ -211,6 +219,10 @@ export default function MyPage() {
         setStatsLoading(false) 
 
       } catch (err) {
+        if (err instanceof Error && err.message.includes('인증')) {
+          router.push('/login')
+          return
+        }
         setError(err instanceof Error ? err.message : '데이터를 불러오는데 실패했습니다.')
         console.error('Failed to fetch data:', err)
         setUserLoading(false)
@@ -219,7 +231,7 @@ export default function MyPage() {
     }
 
     loadData()
-  }, [mounted]) // mounted가 true가 된 후에만 실행
+  }, [mounted, router])
 
   const handleLogout = async () => {
     if (confirm("로그아웃 하시겠습니까?")) {
@@ -228,7 +240,7 @@ export default function MyPage() {
           localStorage.removeItem('auth_token')
           sessionStorage.removeItem('auth_token')
         }
-        window.location.href = "/login"
+        router.push("/login")
       } catch (error) {
         console.error("Logout error:", error)
       }
@@ -268,10 +280,8 @@ export default function MyPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
       <div className="bg-gray-400 text-white px-5 py-8">
         <div className="relative">
-          {/* 홈 버튼 */}
           <Link href="/" className="absolute top-0 right-0 p-2 rounded-full hover:bg-white/10 transition-colors">
             <Home className="w-6 h-6 text-white" />
           </Link>
@@ -297,7 +307,6 @@ export default function MyPage() {
       </div>
 
       <div className="px-5 pb-20">
-        {/* Stats Cards */}
         <div className="grid grid-cols-3 gap-3 -mt-8 mb-8 relative z-10">
           <Card className="border-0 shadow-md">
             <CardContent className="p-4 text-center">
@@ -346,7 +355,6 @@ export default function MyPage() {
           </Card>
         </div>
 
-        {/* Menu Items */}
         <div className="space-y-3">
           {menuItems.map((item, index) => (
             <Link key={index} href={item.href}>
@@ -370,7 +378,6 @@ export default function MyPage() {
           ))}
         </div>
 
-        {/* Logout Button */}
         <div className="mt-8">
           <Button
             onClick={handleLogout}
