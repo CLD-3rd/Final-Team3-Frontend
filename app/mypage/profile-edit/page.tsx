@@ -83,7 +83,7 @@ export default function ProfileEditPage() {
         if (!res.ok) throw new Error("유저 정보 요청 실패")
         
         const response = await res.json()
-        const data = response.data || response // 새로운 형태와 기존 형태 모두 지원
+        const data = response.data || response
         const selectedSport = mapBackendToFrontend(data.sports || "")
 
         setFormData({
@@ -201,7 +201,7 @@ export default function ProfileEditPage() {
       const contentType = res.headers.get('content-type')
       if (contentType?.includes('application/json')) {
         const response = await res.json()
-        const responseData = response.data || response // 새로운 형태와 기존 형태 모두 지원
+        const responseData = response.data || response
         setFormData(prev => ({
           ...prev,
           email: responseData.email || prev.email,
@@ -234,10 +234,10 @@ export default function ProfileEditPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">불러오는 중...</p>
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 text-sm font-medium">잠시만 기다려주세요</p>
         </div>
       </div>
     )
@@ -258,145 +258,159 @@ export default function ProfileEditPage() {
                                    (formData.age !== originalAge && formData.age > 0)
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200 p-4">
-        <div className="flex items-center gap-4">
-          <Link href="/mypage">
-            <ArrowLeft className="w-6 h-6 text-gray-600" />
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-100 z-50">
+        <div className="flex items-center justify-between h-14 px-4">
+          <Link href="/mypage" className="flex items-center justify-center w-10 h-10 -ml-2 rounded-full hover:bg-gray-50 transition-colors">
+            <ArrowLeft className="w-5 h-5 text-gray-700" />
           </Link>
-          <h1 className="text-lg font-semibold">개인정보 수정</h1>
+          <h1 className="text-lg font-bold text-gray-900">개인정보 수정</h1>
+          <div className="w-10"></div>
         </div>
       </div>
 
-      <div className="p-4 pb-20">
-        <div className="bg-white rounded-lg p-6 space-y-6">
-          <div>
-            <Label htmlFor="email" className="text-gray-700 font-medium mb-2 block">이메일</Label>
-            <Input id="email" value={formData.email} readOnly disabled className="bg-gray-100" />
-            <p className="text-xs text-gray-500 mt-1">이메일은 변경할 수 없습니다.</p>
-          </div>
-
-          <div>
-            <Label htmlFor="town" className="text-gray-700 font-medium mb-2 block">동네</Label>
-            <Input id="town" value={formData.town} readOnly disabled className="bg-gray-100" />
-            <p className="text-xs text-gray-500 mt-1">동네는 변경할 수 없습니다.</p>
-          </div>
-
-          <div>
-            <Label htmlFor="nickname" className="text-gray-700 font-medium mb-2 block">닉네임 *</Label>
-            <div className="flex gap-2">
-              <Input
-                id="nickname"
-                placeholder="닉네임을 입력하세요 (한글/영문/숫자 2-10자)"
-                value={formData.nickname}
-                onChange={(e) => handleNicknameChange(e.target.value)}
-                className="flex-1"
+      <div className="px-4 py-6 pb-24 max-w-md mx-auto">
+        <div className="space-y-8">
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold text-gray-900">이메일</Label>
+            <div className="relative">
+              <Input 
+                value={formData.email} 
+                readOnly 
+                disabled 
+                className="h-12 text-base bg-gray-50 border-0 text-gray-500 font-medium pl-4 rounded-2xl"
               />
+            </div>
+            <p className="text-xs text-gray-400 pl-1">이메일은 변경할 수 없어요</p>
+          </div>
+
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold text-gray-900">동네</Label>
+            <div className="relative">
+              <Input 
+                value={formData.town} 
+                readOnly 
+                disabled 
+                className="h-12 text-base bg-gray-50 border-0 text-gray-500 font-medium pl-4 rounded-2xl"
+              />
+            </div>
+            <p className="text-xs text-gray-400 pl-1">동네는 변경할 수 없어요</p>
+          </div>
+
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold text-gray-900">닉네임 *</Label>
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <Input
+                  placeholder="닉네임 입력 (한글/영문/숫자 2-10자)"
+                  value={formData.nickname}
+                  onChange={(e) => handleNicknameChange(e.target.value)}
+                  className="h-12 text-base border-2 border-gray-100 focus:border-blue-500 rounded-2xl pl-4 transition-all duration-200"
+                />
+              </div>
               <Button 
                 variant="outline" 
-                size="sm" 
-                className="bg-blue-500 text-white border-blue-500 px-4 hover:bg-blue-600"
                 onClick={handleCheckNickname}
                 disabled={checkingNickname || !formData.nickname.trim()}
+                className="h-12 px-4 bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl font-semibold text-sm whitespace-nowrap disabled:bg-gray-300 disabled:text-gray-500 transition-all duration-200"
               >
-                {checkingNickname ? "확인중..." : "중복확인"}
+                {checkingNickname ? "확인중" : "중복확인"}
               </Button>
             </div>
             {nicknameStatus.message && (
-              <p className={`text-xs mt-1 ${nicknameStatus.available ? 'text-green-600' : 'text-red-600'}`}>
-                {nicknameStatus.message}
-              </p>
+              <div className={`flex items-center gap-2 pl-1 ${nicknameStatus.available ? 'text-blue-600' : 'text-red-500'}`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${nicknameStatus.available ? 'bg-blue-600' : 'bg-red-500'}`}></div>
+                <p className="text-xs font-medium">{nicknameStatus.message}</p>
+              </div>
             )}
             {formData.nickname && !validateNickname(formData.nickname) && shouldShowValidationErrors && (
-              <p className="text-xs mt-1 text-red-600">
-                2-10자의 한글, 영문, 숫자만 사용 가능합니다.
-              </p>
+              <div className="flex items-center gap-2 pl-1 text-red-500">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                <p className="text-xs font-medium">2-10자의 한글, 영문, 숫자만 사용할 수 있어요</p>
+              </div>
             )}
           </div>
 
-          <div>
-            <Label htmlFor="age" className="text-gray-700 font-medium mb-2 block">나이 *</Label>
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold text-gray-900">나이 *</Label>
             <Input 
-              id="age" 
               type="number"
-              placeholder="나이를 입력하세요 (14-100세)"
+              placeholder="나이 입력 (14-100세)"
               value={formData.age || ''}
               onChange={(e) => setFormData(prev => ({ ...prev, age: parseInt(e.target.value) || 0 }))}
               min="14"
               max="100"
+              className="h-12 text-base border-2 border-gray-100 focus:border-blue-500 rounded-2xl pl-4 transition-all duration-200"
             />
             {formData.age > 0 && (formData.age < 14 || formData.age > 100) && shouldShowValidationErrors && (
-              <p className="text-xs mt-1 text-red-600">
-                나이는 14세 이상 100세 이하만 가능합니다.
-              </p>
+              <div className="flex items-center gap-2 pl-1 text-red-500">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                <p className="text-xs font-medium">14세 이상 100세 이하만 입력할 수 있어요</p>
+              </div>
             )}
           </div>
 
-          <div>
-            <Label className="text-gray-700 font-medium mb-3 block">선호 종목</Label>
+          <div className="space-y-4">
+            <Label className="text-sm font-semibold text-gray-900">선호 종목 *</Label>
             <div className="grid grid-cols-3 gap-3">
               {sports.map((sport) => (
                 <Button
                   key={sport.id}
                   type="button"
-                  variant={formData.selectedSport === sport.id ? "default" : "outline"}
+                  variant="outline"
                   onClick={() => handleSportSelect(sport.id)}
-                  className={`h-16 flex flex-col items-center justify-center gap-1 ${
+                  className={`h-20 flex flex-col items-center justify-center gap-2 border-2 rounded-2xl transition-all duration-200 ${
                     formData.selectedSport === sport.id
-                      ? "bg-blue-500 text-white border-blue-500"
-                      : "border-gray-200 text-gray-700 hover:border-blue-300"
+                      ? "bg-blue-50 border-blue-500 text-blue-700"
+                      : "border-gray-100 text-gray-700 hover:border-gray-200 hover:bg-gray-50"
                   }`}
                 >
-                  <span className="text-xl">{sport.icon}</span>
-                  <span className="text-xs">{sport.name}</span>
+                  <span className="text-2xl">{sport.icon}</span>
+                  <span className="text-xs font-semibold">{sport.name}</span>
                 </Button>
               ))}
             </div>
             {formData.selectedSport && (
-              <p className="text-sm text-blue-600 mt-2">
-                선택된 종목: {sports.find(s => s.id === formData.selectedSport)?.name}
-              </p>
+              <div className="flex items-center gap-2 pl-1 text-blue-600">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div>
+                <p className="text-xs font-medium">
+                  {sports.find(s => s.id === formData.selectedSport)?.name} 선택됨
+                </p>
+              </div>
             )}
             {!formData.selectedSport && shouldShowValidationErrors && (
-              <p className="text-xs mt-1 text-red-600">
-                선호 종목을 선택해주세요.
-              </p>
+              <div className="flex items-center gap-2 pl-1 text-red-500">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                <p className="text-xs font-medium">선호 종목을 선택해주세요</p>
+              </div>
             )}
           </div>
+        </div>
+      </div>
 
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 p-4">
+        <div className="max-w-md mx-auto">
           <Button
             onClick={handleSave}
             disabled={!isFormValid || saving}
-            className="w-full bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white font-semibold py-3 disabled:opacity-50"
+            className={`w-full h-14 text-base font-bold rounded-2xl transition-all duration-200 ${
+              isFormValid && !saving
+                ? "bg-blue-600 hover:bg-blue-700 text-white"
+                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+            }`}
           >
-            {saving ? "저장 중..." : "저장하기"}
+            {saving ? (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                저장 중...
+              </div>
+            ) : (
+              "저장하기"
+            )}
           </Button>
         </div>
       </div>
-      
-      {/* 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
-        <div className="flex justify-around">
-          <Link href="/" className="flex flex-col items-center gap-1 text-gray-400">
-            <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">🏠</span>
-            </div>
-            <span className="text-xs">홈</span>
-          </Link>
-          <Link href="/my-posts" className="flex flex-col items-center gap-1 text-gray-400">
-            <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">📝</span>
-            </div>
-            <span className="text-xs">내 모집</span>
-          </Link>
-          <Link href="/mypage" className="flex flex-col items-center gap-1 text-blue-500">
-            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">👤</span>
-            </div>
-            <span className="text-xs">마이페이지</span>
-          </Link>
-        </div>
-      </div>*/}
     </div>
   )
 }

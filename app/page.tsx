@@ -87,7 +87,7 @@ export default function MainPage() {
   useEffect(() => {
     setSelectedSport("전체");
     setSelectedRegion("모든 지역");
-    setSelectedGender("성별");
+    setSelectedGender("남녀 모두");
     setSelectedDate(null);
     setViewMode("list");
   }, []);
@@ -190,13 +190,13 @@ export default function MainPage() {
 
   const now = new Date();
   const myMainRegion = extractMainRegion(myRegion);
-
+  // tempRegion이 selectedRegion으로
   const filteredPosts = posts.filter(post => {
-    const regionMatch = tempRegion === "모든 지역"
+    const regionMatch = selectedRegion === "모든 지역"
       ? true
-      : tempRegion === "내 지역"
+      : selectedRegion === "내 지역"
         ? extractMainRegion(post.town) === myMainRegion
-        : post.town === tempRegion;
+        : post.town === selectedRegion;
 
     if (!regionMatch) return false;
 
@@ -317,7 +317,7 @@ export default function MainPage() {
               <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold">⚽</span>
               </div>
-              <span className="text-xl font-bold text-gray-900">스포츠 메이트</span>
+              <span className="text-xl font-bold text-gray-900">MatchFit</span>
             </div>
             <div className="flex items-center gap-4">
               <Link href="/">
@@ -366,43 +366,7 @@ export default function MainPage() {
         </div>
       </section>
 
-      {/* Section 2: 통계 */}
-      <section className="py-24 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-              함께하는 즐거움
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              매일 더 많은 사람들이 스포츠 메이트와 함께 건강한 라이프스타일을 만들어가고 있어요
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            <div className="text-center">
-              <div className="w-20 h-20 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <Users className="w-10 h-10 text-blue-600" />
-              </div>
-              <h3 className="text-4xl font-bold text-gray-900 mb-2">10,000+</h3>
-              <p className="text-gray-600 text-lg">활성 멤버</p>
-            </div>
-            <div className="text-center">
-              <div className="w-20 h-20 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <Calendar className="w-10 h-10 text-green-600" />
-              </div>
-              <h3 className="text-4xl font-bold text-gray-900 mb-2">500+</h3>
-              <p className="text-gray-600 text-lg">월간 모임</p>
-            </div>
-            <div className="text-center">
-              <div className="w-20 h-20 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <Star className="w-10 h-10 text-purple-600" />
-              </div>
-              <h3 className="text-4xl font-bold text-gray-900 mb-2">4.9★</h3>
-              <p className="text-gray-600 text-lg">만족도</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      
 
       {/* Section 3: 운동 종목 소개 */}
       <section className="py-24 bg-white">
@@ -457,7 +421,7 @@ export default function MainPage() {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">안전한 모임</h3>
-                    <p className="text-gray-600">검증된 회원들과 함께하는 안전하고 즐거운 운동</p>
+                    <p className="text-gray-600">모든 신청은 주최자의 승인 하에 진행</p>
                   </div>
                 </div>
                 <div className="flex gap-4">
@@ -598,6 +562,7 @@ export default function MainPage() {
                       }}
                       className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium"
                     >
+                      전체보기
                     </button>
                   )}
                   <button

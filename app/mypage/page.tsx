@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ChevronRight, User, Settings, FileText, Heart, List, ReceiptPoundSterling } from "lucide-react"
+import { ChevronRight, User, Settings, FileText, Heart, List, ReceiptPoundSterling, Home, RefreshCw } from "lucide-react"
 import Link from "next/link"
 
 // API 응답 타입 정의
@@ -185,7 +185,7 @@ export default function MyPage() {
   }, [])
 
   useEffect(() => {
-    if (!mounted) ReceiptPoundSterling
+    if (!mounted) return
 
     const loadData = async () => {
       try {
@@ -237,10 +237,10 @@ export default function MyPage() {
 
   if (!mounted || userLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">사용자 정보를 불러오는 중...</p>
+          <div className="w-8 h-8 border-2 border-black-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-500 text-sm">사용자 정보를 불러오는 중...</p>
         </div>
       </div>
     )
@@ -248,10 +248,17 @@ export default function MyPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()} className="bg-blue-500 hover:bg-blue-600">
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="flex flex-col items-center justify-center py-16">
+          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
+            <RefreshCw className="w-8 h-8 text-red-500" />
+          </div>
+          <p className="text-gray-900 font-medium mb-1">오류가 발생했습니다</p>
+          <p className="text-gray-500 text-sm mb-6 text-center">{error}</p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            className="bg-black-600 hover:bg-black-700 text-white px-6 py-3 rounded-xl font-medium shadow-sm"
+          >
             다시 시도
           </Button>
         </div>
@@ -260,47 +267,39 @@ export default function MyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white p-6">
-        <div className="text-center relative">
-          {/* 오른쪽 상단에 홈 아이콘 배치 */}
-          <Link href="/" className="absolute top-0 right-0 m-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-6 h-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="white"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3 10.75L12 4l9 6.75M4.5 10.75V19a1.25 1.25 0 001.25 1.25h3.5A1.25 1.25 0 0010.5 19v-4.25h3V19A1.25 1.25 0 0014.75 20.25h3.5A1.25 1.25 0 0019.5 19v-8.25"
-              />
-            </svg>
+      <div className="bg-gray-400 text-white px-5 py-8">
+        <div className="relative">
+          {/* 홈 버튼 */}
+          <Link href="/" className="absolute top-0 right-0 p-2 rounded-full hover:bg-white/10 transition-colors">
+            <Home className="w-6 h-6 text-white" />
           </Link>
-          <div className="w-20 h-20 bg-white rounded-full mx-auto mb-4 flex items-center justify-center">
-            <User className="w-10 h-10 text-blue-500" />
-          </div>
-          <h2 className="text-xl font-bold mb-2">{user?.nickName}님</h2>
-          <p className="text-sm opacity-90 mb-2">{user?.email}</p>
-          <div className="flex items-center justify-center gap-4 text-sm">
-            <div className="bg-white/20 px-3 py-1 rounded-full">
-              {user?.age}세
+          
+          <div className="text-center mt-8">
+            <div className="w-20 h-20 bg-white rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
+              <User className="w-10 h-10 text-gray-600" />
             </div>
-            <div className="bg-white/20 px-3 py-1 rounded-full">
-              {sportsMapping[user?.sports || ""] || user?.sports}
+            <h2 className="text-2xl font-bold mb-2">{user?.nickName}님</h2>
+            <p className="text-white/80 text-sm mb-4">{user?.email}</p>
+            <div className="flex items-center justify-center gap-3">
+              <div className="bg-white/20 backdrop-blur-sm px-4 py-1 my-2 rounded-full">
+                <span className="text-sm font-medium">{user?.age}세</span>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm px-4 py-1 my-2 rounded-full">
+                <span className="text-sm font-medium">
+                  {sportsMapping[user?.sports || ""] || user?.sports}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="p-4 pb-20">
+      <div className="px-5 pb-20">
         {/* Stats Cards */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <Card>
+        <div className="grid grid-cols-3 gap-3 -mt-8 mb-8 relative z-10">
+          <Card className="border-0 shadow-md">
             <CardContent className="p-4 text-center">
               {statsLoading ? (
                 <div className="animate-pulse">
@@ -309,13 +308,13 @@ export default function MyPage() {
                 </div>
               ) : (
                 <>
-                  <p className="text-2xl font-bold text-blue-500">{stats.participatedCount}</p>
-                  <p className="text-sm text-gray-600">참여한 모임</p>
+                  <p className="text-2xl font-bold text-blue-600 mb-1">{stats.participatedCount}</p>
+                  <p className="text-xs text-gray-500">참여한 모임</p>
                 </>
               )}
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-0 shadow-md">
             <CardContent className="p-4 text-center">
               {statsLoading ? (
                 <div className="animate-pulse">
@@ -324,13 +323,13 @@ export default function MyPage() {
                 </div>
               ) : (
                 <>
-                  <p className="text-2xl font-bold text-green-500">{stats.myPostsCount}</p>
-                  <p className="text-sm text-gray-600">내 모집글</p>
+                  <p className="text-2xl font-bold text-green-600 mb-1">{stats.myPostsCount}</p>
+                  <p className="text-xs text-gray-500">내 모집글</p>
                 </>
               )}
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-0 shadow-md">
             <CardContent className="p-4 text-center">
               {statsLoading ? (
                 <div className="animate-pulse">
@@ -339,8 +338,8 @@ export default function MyPage() {
                 </div>
               ) : (
                 <>
-                  <p className="text-2xl font-bold text-red-500">{stats.favoritesCount}</p>
-                  <p className="text-sm text-gray-600">찜한 모집글</p>
+                  <p className="text-2xl font-bold text-red-500 mb-1">{stats.favoritesCount}</p>
+                  <p className="text-xs text-gray-500">찜한 모집글</p>
                 </>
               )}
             </CardContent>
@@ -351,15 +350,15 @@ export default function MyPage() {
         <div className="space-y-3">
           {menuItems.map((item, index) => (
             <Link key={index} href={item.href}>
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
+              <Card className="border border-gray-200 hover:shadow-md transition-all duration-200 active:scale-[0.98]">
+                <CardContent className="p-5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <item.icon className="w-5 h-5 text-blue-500" />
+                      <div className="w-12 h-12 bg-gray-200 rounded-2xl flex items-center justify-center">
+                        <item.icon className="w-6 h-6 text-gray-600" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900">{item.title}</h3>
+                        <h3 className="font-semibold text-gray-900 mb-1">{item.title}</h3>
                         <p className="text-sm text-gray-500">{item.description}</p>
                       </div>
                     </div>
@@ -376,36 +375,12 @@ export default function MyPage() {
           <Button
             onClick={handleLogout}
             variant="outline"
-            className="w-full text-red-500 border-red-200 hover:bg-red-50 bg-transparent"
+            className="w-full text-red-500 border-red-200 hover:bg-red-50 bg-transparent rounded-xl py-3 font-medium transition-all duration-200 active:scale-[0.98]"
           >
             로그아웃
           </Button>
         </div>
       </div>
-
-      {/* Bottom Navigation 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
-        <div className="flex justify-around">
-          <Link href="/" className="flex flex-col items-center gap-1 text-gray-400">
-            <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">🏠</span>
-            </div>
-            <span className="text-xs">홈</span>
-          </Link>
-          <Link href="/my-posts" className="flex flex-col items-center gap-1 text-gray-400">
-            <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">📝</span>
-            </div>
-            <span className="text-xs">내 모집</span>
-          </Link>
-          <Link href="/mypage" className="flex flex-col items-center gap-1 text-blue-500">
-            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">👤</span>
-            </div>
-            <span className="text-xs">마이페이지</span>
-          </Link>
-        </div>
-      </div>*/}
     </div>
   )
 }

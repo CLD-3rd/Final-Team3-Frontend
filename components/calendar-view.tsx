@@ -53,14 +53,14 @@ export default function CalendarView({ onDateSelect }: CalendarViewProps) {
 
   const getSportColor = (sport: string): string => {
     const colorMap: { [key: string]: string } = {
-      축구: "bg-blue-500",
-      테니스: "bg-green-500",
-      탁구: "bg-red-500",
-      농구: "bg-orange-500",
-      배드민턴: "bg-purple-500",
-      배구: "bg-pink-500",
+      테니스: "bg-blue-300",
+      축구: "bg-green-300",
+      농구: "bg-orange-300",
+      배구: "bg-purple-300",
+      탁구: "bg-red-300",
+      배드민턴: "bg-yellow-300"
     }
-    return colorMap[sport] || "bg-gray-500"
+    return colorMap[sport] || "bg-gray-300"
   }
 
   const getDaysInMonth = (date: Date) => {

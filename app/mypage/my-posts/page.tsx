@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Clock, Users, ChevronDown, ChevronUp, CheckCircle, XCircle } from "lucide-react"
+import { ArrowLeft, Clock, Users, ChevronDown, ChevronUp, CheckCircle, XCircle, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import dynamic from "next/dynamic"
 
@@ -57,13 +57,13 @@ interface ToastMessage {
 
 // 토스트 컴포넌트
 const Toast = ({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) => (
-  <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg transition-all ${
-    type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+  <div className={`fixed top-20 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-lg transition-all backdrop-blur-sm ${
+    type === 'success' ? 'bg-blue-600 text-white' : 'bg-red-500 text-white'
   }`}>
     {type === 'success' ? (
-      <CheckCircle className="w-5 h-5" />
+      <CheckCircle className="w-4 h-4" />
     ) : (
-      <XCircle className="w-5 h-5" />
+      <XCircle className="w-4 h-4" />
     )}
     <span className="text-sm font-medium">{message}</span>
     <button onClick={onClose} className="ml-2 text-white/80 hover:text-white">
@@ -84,17 +84,14 @@ function MyPostsContentComponent() {
     return localStorage.getItem("auth_token") || localStorage.getItem("accessToken")
   }
 
-
   const addToast = (message: string, type: 'success' | 'error') => {
     const id = Date.now()
     setToasts(prev => [...prev, { id, message, type }])
     
-
     setTimeout(() => {
       setToasts(prev => prev.filter(toast => toast.id !== id))
     }, 3000)
   }
-
 
   const removeToast = (id: number) => {
     setToasts(prev => prev.filter(toast => toast.id !== id))
@@ -142,7 +139,6 @@ function MyPostsContentComponent() {
     }
     const result: ApiResponse<GetMyPosts> = await response.json()
     
-    
     if (!result.data || !Array.isArray(result.data.posts)) {
       return []
     }
@@ -163,8 +159,6 @@ function MyPostsContentComponent() {
       }
       
       const result: ApiResponse<GetMyPostApplicants> = await response.json()
-      
-
       
       return result.data.applicants || []
     } catch (error) {
@@ -355,10 +349,10 @@ function MyPostsContentComponent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">불러오는 중...</p>
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-500 text-sm">불러오는 중...</p>
         </div>
       </div>
     )
@@ -366,10 +360,17 @@ function MyPostsContentComponent() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()} className="bg-blue-500 hover:bg-blue-600">
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="flex flex-col items-center justify-center py-16">
+          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
+            <RefreshCw className="w-8 h-8 text-red-500" />
+          </div>
+          <p className="text-gray-900 font-medium mb-1">오류가 발생했습니다</p>
+          <p className="text-gray-500 text-sm mb-6 text-center">{error}</p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium shadow-sm"
+          >
             다시 시도
           </Button>
         </div>
@@ -378,7 +379,7 @@ function MyPostsContentComponent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* 토스트 메시지들 */}
       {toasts.map((toast) => (
         <Toast
@@ -389,35 +390,35 @@ function MyPostsContentComponent() {
         />
       ))}
 
-      <div className="bg-white border-b border-gray-200 p-4">
-        <div className="flex items-center gap-4">
-          <Link href="/mypage">
-            <ArrowLeft className="w-6 h-6 text-gray-600" />
+      {/* Header */}
+      <div className="sticky top-0 bg-white z-10 px-5 py-4 border-b border-gray-100">
+        <div className="flex items-center">
+          <Link href="/mypage" className="p-2 -ml-2 mr-2">
+            <ArrowLeft className="w-6 h-6 text-gray-800" />
           </Link>
-          <h1 className="text-lg font-semibold">내 모집글 관리</h1>
+          <h1 className="text-xl font-bold text-gray-900">내 모집글 관리</h1>
         </div>
       </div>
 
-      <div className="p-4 pb-20">
-        <div className="space-y-4">
+      <div className="px-5 pb-20">
+        <div className="space-y-3 pt-6">
           {Array.isArray(myPosts) && myPosts.map((post, index) => (
-            <Card key={index} className="bg-white">
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start mb-3">
+            <Card key={index} className="border border-gray-200 bg-white hover:shadow-md transition-all duration-200">
+              <CardContent className="p-5">
+                <div className="flex justify-between items-start mb-4">
                   <Badge
-                    variant={post.status === "OPEN" ? "default" : "secondary"}
-                    className={
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${
                       post.status === "OPEN" 
-                        ? "bg-green-500 text-white" 
-                        : "bg-gray-500 text-white"
-                    }
+                        ? "bg-green-100 text-green-700" 
+                        : "bg-gray-100 text-gray-600"
+                    }`}
                   >
                     {getStatusText(post.status)}
                   </Badge>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="ml-auto text-gray-400 hover:text-blue-500"
+                    className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-200"
                     onClick={() => router.push(`/edit-post/${post.postId}`)}
                   >
                     <Pencil className="w-5 h-5" />
@@ -425,28 +426,28 @@ function MyPostsContentComponent() {
                   </Button>
                 </div>
 
-                <h4 className="font-semibold text-gray-900 mb-3">{post.title}</h4>
+                <h3 className="font-bold text-gray-900 text-lg mb-4 leading-tight">{post.title}</h3>
 
-                <div className="space-y-2 text-sm text-gray-600 mb-4">
-                  <div className="flex items-center gap-2">
+                <div className="space-y-2.5 mb-5">
+                  <div className="flex items-center gap-3">
                     <Clock className="w-4 h-4 text-blue-500" />
-                    <span>{formatDate(post.date)}</span>
+                    <span className="text-gray-600 text-sm">{formatDate(post.date)}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <Users className="w-4 h-4 text-green-500" />
-                    <span>{post.currentPeople}/{post.maxPeople}명</span>
+                    <span className="text-gray-600 text-sm">{post.currentPeople}/{post.maxPeople}명</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-sm text-gray-600">
+                <div className="flex items-center justify-between mb-4 pt-3 border-t border-gray-200">
+                  <div className="text-sm text-gray-500">
                     모집 현황: {post.currentPeople}/{post.maxPeople}명
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => toggleExpanded(index)}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 rounded-xl border-gray-200 hover:bg-gray-50 transition-all duration-200"
                   >
                     신청자 보기 ({(applicantsMap[index]?.length ?? '?')}명)
                     {expandedPosts.includes(index) ? (
@@ -459,32 +460,35 @@ function MyPostsContentComponent() {
 
                 {expandedPosts.includes(index) && (
                   <div className="border-t border-gray-200 pt-4 space-y-3">
-                    <h5 className="font-medium text-gray-900">신청자 목록</h5>
+                    <h5 className="font-semibold text-gray-900">신청자 목록</h5>
                     {!applicantsMap[index] ? (
-                      <p className="text-gray-500 text-center py-4">로딩 중...</p>
+                      <div className="text-center py-8">
+                        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                        <p className="text-gray-500 text-sm">로딩 중...</p>
+                      </div>
                     ) : applicantsMap[index].length > 0 ? (
                       applicantsMap[index].map((applicant) => (
-                        <div key={applicant.userId} className="bg-gray-50 rounded-lg p-3">
-                          <div className="flex items-center justify-between mb-2">
+                        <div key={applicant.userId} className="bg-gray-50 rounded-2xl p-4">
+                          <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
                                 {applicant.nickname.charAt(0)}
                               </div>
                               <div>
-                                <p className="font-medium">{applicant.nickname}</p>
-                                <p className="text-sm text-gray-600">
+                                <p className="font-medium text-gray-900">{applicant.nickname}</p>
+                                <p className="text-sm text-gray-500">
                                   {applicant.gender} · {applicant.age}세
                                 </p>
                               </div>
                             </div>
                             <Badge
-                              className={`${
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${
                                 applicant.status === "APPROVED"
-                                  ? "bg-green-500"
+                                  ? "bg-green-500 text-white"
                                   : applicant.status === "PENDING"
-                                  ? "bg-yellow-500"
-                                  : "bg-red-500"
-                              } text-white`}
+                                  ? "bg-orange-500 text-white"
+                                  : "bg-red-500 text-white"
+                              }`}
                             >
                               {getStatusText(applicant.status)}
                             </Badge>
@@ -494,7 +498,7 @@ function MyPostsContentComponent() {
                             <div className="flex gap-2 mt-3">
                               <Button
                                 size="sm"
-                                className="bg-green-500 hover:bg-green-600 text-white flex-1"
+                                className="bg-green-500 hover:bg-green-600 text-white flex-1 rounded-xl font-medium active:scale-95 transition-all duration-200"
                                 onClick={() => handleApprove(index, applicant.userId)}
                               >
                                 승인
@@ -502,7 +506,7 @@ function MyPostsContentComponent() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="text-red-500 border-red-200 hover:bg-red-50 flex-1 bg-transparent"
+                                className="text-red-500 border-red-200 hover:bg-red-50 flex-1 bg-transparent rounded-xl font-medium active:scale-95 transition-all duration-200"
                                 onClick={() => handleReject(index, applicant.userId)}
                               >
                                 거절
@@ -512,8 +516,11 @@ function MyPostsContentComponent() {
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-4">
-                        <p className="text-gray-500 mb-2">신청자가 없거나 조회 권한이 없습니다</p>
+                      <div className="text-center py-8">
+                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3 mx-auto">
+                          <Users className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <p className="text-gray-500 mb-1 font-medium">신청자가 없거나 조회 권한이 없습니다</p>
                         <p className="text-xs text-gray-400">
                           일부 게시글은 권한 설정으로 인해 신청자를 조회할 수 없을 수 있습니다
                         </p>
@@ -527,38 +534,20 @@ function MyPostsContentComponent() {
         </div>
 
         {(!Array.isArray(myPosts) || myPosts.length === 0) && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">작성한 모집글이 없습니다</p>
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+              <Pencil className="w-8 h-8 text-gray-400" />
+            </div>
+            <p className="text-gray-900 font-medium mb-1">작성한 모집글이 없습니다</p>
+            <p className="text-gray-500 text-sm mb-6">새로운 모집글을 작성해보세요</p>
             <Link href="/create-post">
-              <Button className="bg-blue-500 hover:bg-blue-600">새 모집글 작성하기</Button>
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium shadow-sm">
+                새 모집글 작성하기
+              </Button>
             </Link>
           </div>
         )}
       </div>
-      
-      {/* 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
-        <div className="flex justify-around">
-          <Link href="/" className="flex flex-col items-center gap-1 text-gray-400">
-            <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">🏠</span>
-            </div>
-            <span className="text-xs">홈</span>
-          </Link>
-          <Link href="/my-posts" className="flex flex-col items-center gap-1 text-gray-400">
-            <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">📝</span>
-            </div>
-            <span className="text-xs">내 모집</span>
-          </Link>
-          <Link href="/mypage" className="flex flex-col items-center gap-1 text-blue-500">
-            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">👤</span>
-            </div>
-            <span className="text-xs">마이페이지</span>
-          </Link>
-        </div>
-      </div>*/}
     </div>
   )
 }
@@ -566,10 +555,10 @@ function MyPostsContentComponent() {
 const MyPostsContent = dynamic(() => Promise.resolve(MyPostsContentComponent), {
   ssr: false,
   loading: () => (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-white flex items-center justify-center">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-        <p className="text-gray-600">불러오는 중...</p>
+        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-gray-500 text-sm">불러오는 중...</p>
       </div>
     </div>
   )
