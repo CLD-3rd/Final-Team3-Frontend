@@ -9,6 +9,9 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Clock, Users, ChevronDown, ChevronUp, CheckCircle, XCircle } from "lucide-react"
 import Link from "next/link"
 import dynamic from "next/dynamic"
+import { API_BASE_URL } from "@/lib/api-client";
+import EditPostModal from "@/components/edit-post" 
+
 
 interface MyPost {
   postId?: number
@@ -78,6 +81,19 @@ function MyPostsContentComponent() {
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editPostId, setEditPostId] = useState<number | null>(null);
+
+
+  const handleOpenEditModal = (postId: number) => {
+      setEditPostId(postId)
+      setEditModalOpen(true)
+  }
+  
+  const handleCloseEditModal = () => {
+      setEditModalOpen(false)
+      setEditPostId(null)
+  }
 
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null
@@ -142,7 +158,7 @@ function MyPostsContentComponent() {
   }
 
   const fetchMyPosts = async (): Promise<MyPost[]> => {
-    const response = await makeAuthenticatedRequest("http://localhost:8080/api/posts/mine")
+    const response = await makeAuthenticatedRequest(`${API_BASE_URL}/posts/mine`)
     if (!response.ok) {
       throw new Error(`서버 오류: ${response.status}`)
     }
@@ -157,7 +173,7 @@ function MyPostsContentComponent() {
 
   const fetchApplicants = async (postId: number): Promise<Applicant[]> => {
     try {
-      const response = await makeAuthenticatedRequest(`http://localhost:8080/api/posts/${postId}/applicants`)
+      const response = await makeAuthenticatedRequest(`${API_BASE_URL}/posts/${postId}/applicants`)
       
       if (response.status === 403) {
         return []
@@ -177,7 +193,7 @@ function MyPostsContentComponent() {
 
   const manageApplicant = async (postId: number, applicantId: number, decision: 'ACCEPT' | 'REJECT') => {
     try {
-      const response = await makeAuthenticatedRequest(`http://localhost:8080/api/posts/${postId}/apply`, {
+      const response = await makeAuthenticatedRequest(`${API_BASE_URL}/posts/${postId}/apply`, {
         method: 'PATCH',
         body: JSON.stringify({
           applicantId,
@@ -433,7 +449,7 @@ function MyPostsContentComponent() {
                     variant="ghost"
                     size="icon"
                     className="ml-auto text-gray-400 hover:text-blue-500"
-                    onClick={() => router.push(`/edit-post/${post.postId}`)}
+                    onClick={() => handleOpenEditModal(post.postId!)}
                   >
                     <Pencil className="w-5 h-5" />
                     <span className="sr-only">수정</span>
@@ -538,6 +554,13 @@ function MyPostsContentComponent() {
             </Card>
           ))}
         </div>
+        {editModalOpen && editPostId && (
+          <EditPostModal
+            postId={editPostId}
+            isOpen={editModalOpen}
+            onClose={handleCloseEditModal}
+          />
+        )}
 
         {(!Array.isArray(myPosts) || myPosts.length === 0) && (
           <div className="text-center py-12">

@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation"
+import { API_BASE_URL } from "@/lib/api-client";
 
 
 const sports = [

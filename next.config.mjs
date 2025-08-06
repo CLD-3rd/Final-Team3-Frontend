@@ -9,7 +9,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-//  output: 'export', // ci, cd를 위한 설정
+  output: 'export', // ci, cd를 위한 설정
+  trailingSlash: true,
 }
 
 export default nextConfig

@@ -1,6 +1,6 @@
 import type { Post, User, CreatePostData, LoginData, SignupData, ApiResponse } from "@/types/api"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"
+export const API_BASE_URL = "http://localhost:8080/api"
 
 class ApiClient {
   private baseURL: string
@@ -105,6 +105,13 @@ class ApiClient {
   if (!res.ok) throw new Error("카카오 설정값을 가져올 수 없습니다.");
   return await res.json();
 }
+
+  // // 🔧 추가: 카카오 로그인 콜백
+  async kakaoLoginCallback(code: string): Promise<ApiResponse<{ token: string } | { signupRequired: boolean; email: string }>> {
+    return this.request<ApiResponse<any>>(`/user/oauth/kakao/login-callback?code=${code}`, {
+      method: "GET",
+    });
+  }
 
   // Posts methods
   async getPosts(params?: {

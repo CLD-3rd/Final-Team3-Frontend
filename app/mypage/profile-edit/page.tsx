@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { API_BASE_URL } from "@/lib/api-client";
 
 const sports = [
   { id: "축구", name: "축구", icon: "⚽", backendId: "FOOTBALL" },
@@ -79,7 +80,7 @@ export default function ProfileEditPage() {
           return
         }
 
-        const res = await makeAuthenticatedRequest("http://localhost:8080/api/user/mypage")
+        const res = await makeAuthenticatedRequest(`${API_BASE_URL}/user/mypage`)
         if (!res.ok) throw new Error("유저 정보 요청 실패")
         
         const response = await res.json()
@@ -127,7 +128,7 @@ export default function ProfileEditPage() {
 
     setCheckingNickname(true)
     try {
-      const res = await makeAuthenticatedRequest("http://localhost:8080/api/user/check-nickname", {
+      const res = await makeAuthenticatedRequest(`${API_BASE_URL}/user/check-nickname`, {
         method: "POST",
         body: JSON.stringify({ nickname: formData.nickname })
       })
@@ -183,7 +184,7 @@ export default function ProfileEditPage() {
         ...(sportBackendValue ? { sports: sportBackendValue } : {})
       }
 
-      const res = await makeAuthenticatedRequest('http://localhost:8080/api/user/mypage', {
+      const res = await makeAuthenticatedRequest(`${API_BASE_URL}/user/mypage`, {
         method: 'PUT',
         body: JSON.stringify(updateData)
       })
