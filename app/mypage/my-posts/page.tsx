@@ -33,7 +33,6 @@ interface ApiResponse<T> {
   data: T
 }
 
-// 백엔드 응답 구조
 interface GetMyPosts {
   posts: MyPost[]
 }
@@ -48,14 +47,12 @@ interface DecisionApplicant {
   decision: string
 }
 
-// 토스트 메시지 타입
 interface ToastMessage {
   id: number
   message: string
   type: 'success' | 'error'
 }
 
-// 토스트 컴포넌트
 const Toast = ({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) => (
   <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg transition-all ${
     type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
@@ -79,22 +76,22 @@ function MyPostsContentComponent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
-  const getAuthToken = () => {
-    return localStorage.getItem("auth_token") || localStorage.getItem("accessToken")
-  }
 
+  const getAuthToken = () => {
+    if (typeof window === 'undefined') return null
+    return localStorage.getItem("auth_token") 
+  }
 
   const addToast = (message: string, type: 'success' | 'error') => {
     const id = Date.now()
     setToasts(prev => [...prev, { id, message, type }])
     
-
     setTimeout(() => {
       setToasts(prev => prev.filter(toast => toast.id !== id))
     }, 3000)
   }
-
 
   const removeToast = (id: number) => {
     setToasts(prev => prev.filter(toast => toast.id !== id))
@@ -102,7 +99,6 @@ function MyPostsContentComponent() {
 
   const makeAuthenticatedRequest = async (url: string, options?: RequestInit) => {
     const token = getAuthToken()
-    if (!token) throw new Error("인증 토큰이 없습니다. 다시 로그인해주세요.")
 
     try {
       const response = await fetch(url, {
@@ -113,6 +109,13 @@ function MyPostsContentComponent() {
           ...options?.headers,
         },
       })
+
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('accessToken')
+        router.push('/login')
+        throw new Error("인증이 만료되었습니다. 다시 로그인해주세요.")
+      }
 
       if (response.status === 403) {
         await new Promise(resolve => setTimeout(resolve, 500))
@@ -131,6 +134,9 @@ function MyPostsContentComponent() {
 
       return response
     } catch (error) {
+      if (error instanceof Error && error.message.includes('인증')) {
+        throw error
+      }
       throw new Error("서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.")
     }
   }
@@ -141,7 +147,6 @@ function MyPostsContentComponent() {
       throw new Error(`서버 오류: ${response.status}`)
     }
     const result: ApiResponse<GetMyPosts> = await response.json()
-    
     
     if (!result.data || !Array.isArray(result.data.posts)) {
       return []
@@ -163,8 +168,6 @@ function MyPostsContentComponent() {
       }
       
       const result: ApiResponse<GetMyPostApplicants> = await response.json()
-      
-
       
       return result.data.applicants || []
     } catch (error) {
@@ -222,6 +225,18 @@ function MyPostsContentComponent() {
   }
 
   useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+
+    const token = getAuthToken()
+    if (!token) {
+      router.push('/login')
+      return
+    }
+
     const loadMyPosts = async () => {
       try {
         setLoading(true)
@@ -245,16 +260,17 @@ function MyPostsContentComponent() {
           }
         }
       } catch (err) {
-        if (!(err instanceof Error) || !err.message.includes("인증")) {
-          setError(err instanceof Error ? err.message : '데이터를 불러오는데 실패했습니다.')
-          addToast(err instanceof Error ? err.message : '데이터를 불러오는데 실패했습니다.', 'error')
+        if (err instanceof Error && (err.message.includes("인증") || err.message.includes("로그인"))) {
+          return
         }
+        setError(err instanceof Error ? err.message : '데이터를 불러오는데 실패했습니다.')
+        addToast(err instanceof Error ? err.message : '데이터를 불러오는데 실패했습니다.', 'error')
       } finally {
         setLoading(false)
       }
     }
     loadMyPosts()
-  }, [])
+  }, [mounted, router])
 
   const toggleExpanded = async (postIndex: number) => {
     const isExpanding = !expandedPosts.includes(postIndex)
@@ -353,7 +369,7 @@ function MyPostsContentComponent() {
     }
   }
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -379,7 +395,6 @@ function MyPostsContentComponent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 토스트 메시지들 */}
       {toasts.map((toast) => (
         <Toast
           key={toast.id}
@@ -513,10 +528,8 @@ function MyPostsContentComponent() {
                       ))
                     ) : (
                       <div className="text-center py-4">
-                        <p className="text-gray-500 mb-2">신청자가 없거나 조회 권한이 없습니다</p>
-                        <p className="text-xs text-gray-400">
-                          일부 게시글은 권한 설정으로 인해 신청자를 조회할 수 없을 수 있습니다
-                        </p>
+                        <p className="text-gray-500 mb-2">신청자가 없습니다</p>
+                        
                       </div>
                     )}
                   </div>
@@ -535,30 +548,6 @@ function MyPostsContentComponent() {
           </div>
         )}
       </div>
-      
-      {/* 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
-        <div className="flex justify-around">
-          <Link href="/" className="flex flex-col items-center gap-1 text-gray-400">
-            <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">🏠</span>
-            </div>
-            <span className="text-xs">홈</span>
-          </Link>
-          <Link href="/my-posts" className="flex flex-col items-center gap-1 text-gray-400">
-            <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">📝</span>
-            </div>
-            <span className="text-xs">내 모집</span>
-          </Link>
-          <Link href="/mypage" className="flex flex-col items-center gap-1 text-blue-500">
-            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">👤</span>
-            </div>
-            <span className="text-xs">마이페이지</span>
-          </Link>
-        </div>
-      </div>*/}
     </div>
   )
 }

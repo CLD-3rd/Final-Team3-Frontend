@@ -535,7 +535,7 @@ export default function SignupPage() {
           {/* Submit Button */}
           <Button
             type="submit"
-            className="w-full bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white font-semibold py-4 text-lg mt-8"
+            className="w-full h-14 bg-gray-400 hover:bg-gray-600 text-white font-semibold rounded-xl transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed"
             disabled={loading}
           >
             {loading ? "회원가입 중..." : "회원가입"}

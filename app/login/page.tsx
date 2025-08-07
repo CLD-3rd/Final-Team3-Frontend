@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,15 +10,14 @@ import { Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
-import { useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useSearchParams } from "next/navigation"
 
 export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams();
-  const kakaoToken = searchParams.get("kakaoToken");
+  const searchParams = useSearchParams()
+  const kakaoToken = searchParams.get("kakaoToken")
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberEmail, setRememberEmail] = useState(false);
+  const [rememberEmail, setRememberEmail] = useState(false)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -45,8 +43,7 @@ export default function LoginPage() {
         setError(response.message || "존재하지 않는 사용자입니다.")
       } else if (response.code === "USER405") {
         setError(response.message || "유효하지 않은 비밀번호입니다.")
-      }
-      else {
+      } else {
         setError(response.message || "로그인에 실패했습니다.")
       }
     } catch (error) {
@@ -56,162 +53,167 @@ export default function LoginPage() {
       setLoading(false)
     }
   }
-  useEffect(() => {
-    const savedEmail = localStorage.getItem("rememberedEmail");
-    if (savedEmail) {
-      setFormData((prev) => ({ ...prev, email: savedEmail }));
-      setRememberEmail(true);
-    }
-  }, []);
 
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("rememberedEmail")
+    if (savedEmail) {
+      setFormData((prev) => ({ ...prev, email: savedEmail }))
+      setRememberEmail(true)
+    }
+  }, [])
 
   useEffect(() => {
     if (kakaoToken) {
-      // 1. 토큰 저장
-      localStorage.setItem("auth_token", kakaoToken);
-      // 2. 메인페이지로 이동
-      router.push("/");
+      localStorage.setItem("auth_token", kakaoToken)
+      window.location.href = "/"
     }
-  }, [kakaoToken, router]);
-  
+  }, [kakaoToken, router])
+
   const handleKakaoLogin = async () => {
     try {
-      // 백엔드에서 카카오 앱 clientId, loginRedirectUri 값 받아오기
-      const config = await apiClient.fetchKakaoConfig();
-
-      // 카카오 로그인용 redirect_uri 사용
-      const kakaoLoginUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(config.loginRedirectUri)}&response_type=code`;
-
-      // 카카오 로그인 페이지로 이동
-      window.location.href = kakaoLoginUrl;
+      const config = await apiClient.fetchKakaoConfig()
+      const kakaoLoginUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(config.loginRedirectUri)}&response_type=code`
+      window.location.href = kakaoLoginUrl
     } catch (err) {
-      alert("카카오 로그인 정보를 불러올 수 없습니다.");
+      alert("카카오 로그인 정보를 불러올 수 없습니다.")
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-500 to-cyan-400 flex flex-col">
-      {/* Header */}
-      <div className="text-center text-white pt-12 pb-8">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-            <span className="text-2xl">⚽</span>
+    <div className="min-h-screen bg-white">
+      <div className="px-6 pt-16 pb-12">
+        <div className="max-w-sm mx-auto">
+          <div className="flex items-center justify-center mb-8">
+            <div className="w-14 h-14 bg-gray-200 rounded-2xl flex items-center justify-center shadow-lg">
+              <span className="text-2xl">⚽</span>
+            </div>
           </div>
+          <h1 className="text-3xl font-bold text-gray-900 text-center mb-2">
+            MatchFit
+          </h1>
+          <p className="text-gray-500 text-center text-base">
+            함께 운동하는 즐거움을 시작해보세요
+          </p>
         </div>
-        <h1 className="text-2xl font-bold mb-2">스포츠 메이트</h1>
-        <p className="text-sm opacity-90">함께 운동하는 즐거움</p>
       </div>
 
-      {/* Login Form */}
-      <div className="flex-1 bg-white rounded-t-3xl p-6">
+      <div className="px-6">
         <div className="max-w-sm mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">환영합니다!</h2>
-            <p className="text-gray-600">로그인하여 운동 메이트를 찾아보세요</p>
-          </div>
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-medium">
+              {error}
+            </div>
+          )}
 
-          {/* Error Message */}
-          {error && <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
-
-          {/* Kakao Login */}
-          <div className="mb-6">
+          {/* 카카오 로그인 */}
+          <div className="mb-8">
             <Button
               onClick={handleKakaoLogin}
-              className="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold mb-6 py-3"
+              className="w-full h-14 bg-yellow-300 hover:bg-yellow-400 text-gray-900 font-semibold rounded-xl border-0 transition-colors duration-200"
               disabled={loading}
             >
-              <span className="mr-2">💬</span>
-              카카오로 시작하기
+              <span className="mr-3 text-lg">💬</span>
+              카카오로 3초만에 시작하기
             </Button>
           </div>
 
-          {/* Divider */}
-          <div className="text-center text-gray-500 mb-6">
-            <span>또는</span>
+          <div className="relative mb-8">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white text-gray-500">또는</span>
+            </div>
           </div>
 
-          {/* Email/Password Form */}
-          <form onSubmit={handleLogin} className="space-y-4 mb-6">
-            <div>
-              <Label htmlFor="email" className="text-gray-700 font-medium">
-                아이디 또는 이메일
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="아이디 또는 이메일을 입력하세요"
-                value={formData.email}
-                onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
-                className="mt-1"
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="password" className="text-gray-700 font-medium">
-                비밀번호
-              </Label>
-              <div className="relative mt-1">
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="email" className="text-sm font-semibold text-gray-900 mb-2 block">
+                  이메일
+                </Label>
                 <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="비밀번호를 입력하세요"
-                  value={formData.password}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
-                  className="pr-10"
+                  id="email"
+                  type="email"
+                  placeholder="이메일을 입력해주세요"
+                  value={formData.email}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                  className="h-14 px-4 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-base placeholder:text-gray-400"
                   required
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="keep-logged-in"
-                  checked={formData.keepLoggedIn}
-                  onCheckedChange={(checked) => {
-                    const keep = !!checked;
-                    setFormData((prev) => ({ ...prev, keepLoggedIn: keep }));
-
-                    if (keep) {
-                      // 체크되면 이메일 저장
-                    localStorage.setItem("rememberedEmail", formData.email);
-                    } else {
-                      // 체크 해제 시 이메일 삭제 + 입력창 초기화
-                      localStorage.removeItem("rememberedEmail");
-                      setFormData((prev) => ({ ...prev, email: "" }));
-                    }
-                  }}
-                />
-                <Label htmlFor="keep-logged-in" className="text-sm text-gray-600">
-                  로그인 상태 유지
+              <div>
+                <Label htmlFor="password" className="text-sm font-semibold text-gray-900 mb-2 block">
+                  비밀번호
                 </Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="비밀번호를 입력해주세요"
+                    value={formData.password}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+                    className="h-14 px-4 pr-12 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-base placeholder:text-gray-400"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Login Button */}
+            <div className="flex items-center space-x-3">
+              <Checkbox
+                id="keep-logged-in"
+                checked={formData.keepLoggedIn}
+                onCheckedChange={(checked) => {
+                  const keep = !!checked
+                  setFormData((prev) => ({ ...prev, keepLoggedIn: keep }))
+
+                  if (keep) {
+                    localStorage.setItem("rememberedEmail", formData.email)
+                  } else {
+                    localStorage.removeItem("rememberedEmail")
+                    setFormData((prev) => ({ ...prev, email: "" }))
+                  }
+                }}
+                className="w-5 h-5 border-2 border-gray-300 rounded data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+              />
+              <Label htmlFor="keep-logged-in" className="text-sm text-gray-600 cursor-pointer">
+                로그인 상태 유지
+              </Label>
+            </div>
+
+            {/* 로그인 버튼 */}
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white font-semibold py-3"
-              disabled={loading}
+              className="w-full h-14 bg-gray-400 hover:bg-gray-600 text-white font-semibold rounded-xl transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              disabled={loading || !formData.email || !formData.password}
             >
-              {loading ? "로그인 중..." : "로그인"}
+              {loading ? (
+                <div className="flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  로그인 중...
+                </div>
+              ) : (
+                "로그인"
+              )}
             </Button>
           </form>
 
-          {/* Footer Links */}
-
-          <div className="text-center mt-6">
-            <span className="text-gray-600">아직 계정이 없으신가요? </span>
-            <Link href="/signup" className="text-blue-500 hover:underline font-semibold">
-              회원가입
+          <div className="text-center mt-8 pb-16">
+            <span className="text-gray-500 text-sm">아직 계정이 없으신가요? </span>
+            <Link 
+              href="/signup" 
+              className="text-blue-500 hover:text-blue-600 font-semibold text-sm transition-colors"
+            >
+              회원가입하기
             </Link>
           </div>
         </div>
