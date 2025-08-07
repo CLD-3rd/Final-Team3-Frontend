@@ -6,6 +6,7 @@ on:
       - fix/s3-modal
   workflow_dispatch:
 
+
 permissions:
   id-token: write
   contents: read
