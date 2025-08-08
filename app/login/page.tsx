@@ -17,7 +17,6 @@ export default function LoginPage() {
   const searchParams = useSearchParams()
   // const kakaoToken = searchParams.get("kakaoToken")
   const code = searchParams.get("code")
-  //const [hydrated, setHydrated] = useState(false)
   // const [tokenSaved, setTokenSaved] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [rememberEmail, setRememberEmail] = useState(false)
@@ -57,43 +56,7 @@ export default function LoginPage() {
       setLoading(false)
     }
   }
-// jwt를 json으로 전달하기
-//   useEffect(() => {
-//   const code = searchParams.get("code");
-//   if (code) {
-//     const fetchKakaoToken = async () => {
-//       try {
-//         const res = await apiClient.kakaoLoginCallback(code);
 
-//         if (res.data) {
-//           if ("token" in res.data) {
-//             localStorage.setItem("auth_token", res.data.token);
-//             router.replace("/");
-//           } else if ("signupRequired" in res.data && res.data.signupRequired) {
-//             router.replace(`/signup?kakaoEmail=${res.data.email}`);
-//           } else {
-//             console.error("Unexpected kakao response:", res);
-//           }
-//         } else {
-//           console.error("No data in kakao response", res);
-//         }
-
-//       } catch (err) {
-//         console.error("카카오 로그인 에러:", err);
-//       }
-//     };
-
-//     fetchKakaoToken();
-//   }
-// }, [code, router])
-
-
-  // useEffect(() => {
-  //   if (kakaoToken) {
-  //     localStorage.setItem("auth_token", kakaoToken)
-  //     window.location.href = "/"
-  //   }
-  // }, [kakaoToken, router])
   useEffect(() => {
     // 이 안에서만 kakaoToken 처리
     const kakaoToken = searchParams.get("kakaoToken")
@@ -102,7 +65,7 @@ export default function LoginPage() {
       // 토큰 저장
       localStorage.setItem("auth_token", kakaoToken)
       // 메인페이지로 이동
-      window.location.replace("/") // router.replace("/")도 가능, but 확실히 새로고침할 땐 window.location 추천
+      window.location.replace("/") // router.replace("/")도 가능, 그러나 확실히 새로고침할 땐 window.location 추천
     }
   }, [searchParams])
 

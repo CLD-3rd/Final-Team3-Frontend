@@ -11,6 +11,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
 import { Search } from "lucide-react"
+import { API_BASE_URL } from "@/lib/api-client";
 
 
 
@@ -187,7 +188,7 @@ export default function CreatePostPage() {
       
       headers['Authorization'] = `Bearer ${token}`
         
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/posts`, {
+      const response = await fetch(`${API_BASE_URL}/posts`, {
         method: 'POST',
         headers: headers,
         body: submitFormData,

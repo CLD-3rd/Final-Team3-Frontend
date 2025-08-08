@@ -71,7 +71,7 @@ export default function SignupPage() {
 
   useEffect(() => {
   // 컴포넌트 마운트 시 카카오 설정값 받아오기
-  fetch("http://localhost:8080/api/kakao-config")
+  fetch(`${API_BASE_URL}/kakao-config`)
     .then((res) => res.json())
     .then(setKakaoConfig)
     .catch(() => setKakaoConfig(null));
@@ -238,7 +238,7 @@ export default function SignupPage() {
       setSuccess(response.message || "회원가입이 완료되었습니다!");
       router.push("/login");  
     } else {
-      setError("회원가입에 실패했습니다."); // 응답에 .message 필드는 없으니 직접 메시지 작성
+      setError("회원가입에 실패했습니다."); 
     }
     } catch (error) {
       setError("회원가입 중 오류가 발생했습니다.")

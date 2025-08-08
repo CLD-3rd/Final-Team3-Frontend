@@ -257,7 +257,7 @@ export const apiClient = new ApiClient(API_BASE_URL)
 
 export async function fetchPostsCalender(year: number, month: number) {
   const monthStr = month.toString().padStart(2, "0");
-  const response = await fetch(`http://localhost:8080/api/posts/calender?month=${year}-${monthStr}`);
+  const response = await fetch(`${API_BASE_URL}/posts/calender?month=${year}-${monthStr}`);
   if (!response.ok) throw new Error("Failed to fetch calendar events");
   return await response.json();
 }
