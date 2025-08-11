@@ -228,6 +228,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
     setPost(null)
     setError("")
     setToasts([])
+    sessionStorage.setItem('needsRefresh', '1');
     onClose()
   }
 

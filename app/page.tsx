@@ -701,11 +701,11 @@ export default function MainPage() {
                                   {participant.nickName?.charAt(0) || "?"}
                                 </div>
                               ))}
-                              {post.currentPeople > 3 && (
+                              {/* {post.currentPeople > 3 && (
                                 <div className="w-10 h-10 bg-gray-500 rounded-full border-3 border-white flex items-center justify-center text-sm text-white font-semibold shadow-lg">
                                   +{post.currentPeople - 3}
                                 </div>
-                              )}
+                              )} */}
                             </div>
                           </div>
                           <div className="text-right flex items-center gap-6">
