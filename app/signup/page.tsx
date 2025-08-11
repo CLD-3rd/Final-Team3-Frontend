@@ -185,22 +185,24 @@ export default function SignupPage() {
       return
     }
 
-    const isLengthValid = formData.password.length >= 8
-    const hasLetter = /[a-zA-Z]/.test(formData.password)
-    const hasNumber = /\d/.test(formData.password)
-    const hasSpecialChar = /[^a-zA-Z0-9]/.test(formData.password)
-    const isPasswordValid = isLengthValid && hasLetter && hasNumber && hasSpecialChar
+    if (!formData.isKakaoUser) {
+      const isLengthValid = formData.password.length >= 8;
+      const hasLetter = /[a-zA-Z]/.test(formData.password);
+      const hasNumber = /\d/.test(formData.password);
+      const hasSpecialChar = /[^a-zA-Z0-9]/.test(formData.password);
+      const isPasswordValid = isLengthValid && hasLetter && hasNumber && hasSpecialChar;
 
-    if (!isPasswordValid) {
-      setError("비밀번호가 잘못된 형식입니다.")
-      setLoading(false)
-      return
-    }
+      if (!isPasswordValid) {
+        setError("비밀번호가 잘못된 형식입니다.");
+        setLoading(false);
+        return;
+      }
 
-    if (formData.password !== formData.confirmPassword) {
-      setError("비밀번호가 일치하지 않습니다.")
-      setLoading(false)
-      return
+      if (formData.password !== formData.confirmPassword) {
+        setError("비밀번호가 일치하지 않습니다.");
+        setLoading(false);
+        return;
+      }
     }
 
     if (!formData.gender) {
