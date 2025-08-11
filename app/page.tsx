@@ -739,6 +739,8 @@ export default function MainPage() {
                       onClose={() => {
                         setModalOpen(false);
                         setSelectedPostId(null);
+                        fetchPosts();
+                        fetchFavorites();
                       }}
                     />
                   )}

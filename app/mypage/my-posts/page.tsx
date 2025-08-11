@@ -84,15 +84,31 @@ function MyPostsContentComponent() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editPostId, setEditPostId] = useState<number | null>(null);
 
+  const fetchMyPosts = async (): Promise<MyPost[]> => {
+    const response = await makeAuthenticatedRequest(`${API_BASE_URL}/posts/mine`)
+    if (!response.ok) {
+      throw new Error(`서버 오류: ${response.status}`)
+    }
+    const result: ApiResponse<GetMyPosts> = await response.json()
+    
+    if (!result.data || !Array.isArray(result.data.posts)) {
+      return []
+    }
+    
+    return result.data.posts
+  }
 
   const handleOpenEditModal = (postId: number) => {
       setEditPostId(postId)
       setEditModalOpen(true)
   }
   
-  const handleCloseEditModal = () => {
+  const handleCloseEditModal = async () => {
       setEditModalOpen(false)
       setEditPostId(null)
+
+      const posts = await fetchMyPosts();
+      setMyPosts(posts)
   }
 
   const getAuthToken = () => {
@@ -155,20 +171,6 @@ function MyPostsContentComponent() {
       }
       throw new Error("서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.")
     }
-  }
-
-  const fetchMyPosts = async (): Promise<MyPost[]> => {
-    const response = await makeAuthenticatedRequest(`${API_BASE_URL}/posts/mine`)
-    if (!response.ok) {
-      throw new Error(`서버 오류: ${response.status}`)
-    }
-    const result: ApiResponse<GetMyPosts> = await response.json()
-    
-    if (!result.data || !Array.isArray(result.data.posts)) {
-      return []
-    }
-    
-    return result.data.posts
   }
 
   const fetchApplicants = async (postId: number): Promise<Applicant[]> => {

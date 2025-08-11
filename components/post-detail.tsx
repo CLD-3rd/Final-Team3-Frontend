@@ -228,30 +228,29 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
     setPost(null)
     setError("")
     setToasts([])
-    sessionStorage.setItem('needsRefresh', '1');
     onClose()
   }
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: post?.title || '스포츠 메이트 모집',
-          text: `${formatTimeToKorean12Hour(post?.date || '')} ${getSportName(post?.sports || '')} 모집`,
-          url: window.location.href
-        })
-      } catch (error) {
-        console.error('공유 실패:', error)
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(window.location.href)
-        addToast('링크가 복사되었습니다!', 'success')
-      } catch (error) {
-        console.error('클립보드 복사 실패:', error)
-      }
-    }
-  }
+  // const handleShare = async () => {
+  //   if (navigator.share) {
+  //     try {
+  //       await navigator.share({
+  //         title: post?.title || '스포츠 메이트 모집',
+  //         text: `${formatTimeToKorean12Hour(post?.date || '')} ${getSportName(post?.sports || '')} 모집`,
+  //         url: window.location.href
+  //       })
+  //     } catch (error) {
+  //       console.error('공유 실패:', error)
+  //     }
+  //   } else {
+  //     try {
+  //       await navigator.clipboard.writeText(window.location.href)
+  //       addToast('링크가 복사되었습니다!', 'success')
+  //     } catch (error) {
+  //       console.error('클립보드 복사 실패:', error)
+  //     }
+  //   }
+  // }
 
   const toggleFavorite = async () => {
     if (!isLoggedIn) {
@@ -508,12 +507,12 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                 <span className="font-bold text-gray-900">MatchFit</span>
               </div>
               <div className="flex items-center gap-2">
-                <button
+                {/* <button
                   onClick={handleShare}
                   className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
                 >
                   <Share2 className="w-5 h-5 text-gray-600" />
-                </button>
+                </button> */}
                 <button
                   onClick={toggleFavorite}
                   className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
