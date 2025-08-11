@@ -717,12 +717,6 @@ export default function MainPage() {
                                   : `${Number(post.cost).toLocaleString()}원`}
                               </p>
                             </div>
-                            {/*<Link href={`/post/${post.id}`}>*/}
-                              {/* <button className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors font-semibold group-hover:scale-105">
-                                상세보기
-                                <ArrowRight className="w-4 h-4" />
-                              </button> */}
-                            {/* </Link> */}
                             <button
                               onClick={() => {
                                 setSelectedPostId(post.id)

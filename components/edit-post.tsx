@@ -63,11 +63,6 @@ interface PostData {
   location: string
   userEmail: string 
 }
-/*
-export async function generateStaticParams() {
-  const ids = Array.from({ length: 100 }, (_, i) => String(i + 1));
-  return ids.map(id => ({ id }));
-}*/
 
 // 토스트 컴포넌트
 const Toast = ({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) => (

@@ -340,14 +340,6 @@ export default function FavoritesPage() {
                     <p className="text-lg font-bold text-red-500">
                       {formatPrice(post.cost)}
                     </p>
-                    {/* <Link href={`/post/${post.postId}`}>
-                      <Button 
-                        size="sm" 
-                        className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm active:scale-95 transition-all duration-200"
-                      >
-                        상세보기
-                      </Button>
-                    </Link> */}
                     {/* 모달 추가 부분 351-360 */}
                     <Button
                       size="sm"
