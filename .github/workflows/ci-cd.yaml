@@ -1,9 +1,9 @@
 name: Frontend CI, CD
 
 on:
-  # push:
-  #   branches:
-  #     - fix/s3-modal
+  push:
+    branches:
+      - fix/s3-modal
   workflow_dispatch:
 
 
