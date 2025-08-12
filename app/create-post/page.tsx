@@ -134,7 +134,7 @@ export default function CreatePostPage() {
   const [isLoadingPlaces, setIsLoadingPlaces] = useState(false)
   const locationInputRef = useRef<HTMLInputElement>(null)
   const predictionsRef = useRef<HTMLDivElement>(null)
-  const GOOGLE_PLACES_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || ""
+  const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY || ""
 
   // Google Places Autocomplete Service 초기화
   useEffect(() => {
