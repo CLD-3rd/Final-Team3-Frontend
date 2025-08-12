@@ -334,6 +334,14 @@ export default function SignupPage() {
                 className="pr-10"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
               <ul className="text-sm mt-2 ml-1 space-y-1">
                 <li className={`flex items-center ${formData.password.length >= 8 ? "text-green-600" : "text-gray-500"}`}>
                   {formData.password.length >= 8 ? "✓" : "○"}&nbsp;8자 이상
@@ -347,15 +355,7 @@ export default function SignupPage() {
                 <li className={`flex items-center ${/[^a-zA-Z0-9]/.test(formData.password) ? "text-green-600" : "text-gray-500"}`}>
                   {/[^a-zA-Z0-9]/.test(formData.password) ? "✓" : "○"}&nbsp;특수문자 포함
                 </li>
-              </ul>
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
+              </ul>          
           </div>
         )}
           {/* Confirm Password */}
