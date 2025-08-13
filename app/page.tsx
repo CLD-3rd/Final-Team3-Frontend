@@ -742,6 +742,7 @@ export default function MainPage() {
                         fetchPosts();
                         fetchFavorites();
                       }}
+                      onLogin={() => router.push('/login')} 
                     />
                   )}
                 </div>

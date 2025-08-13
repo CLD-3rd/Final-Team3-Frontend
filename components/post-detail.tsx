@@ -254,6 +254,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
 
   const toggleFavorite = async () => {
     if (!isLoggedIn) {
+      handleClose()
       if (onLogin) onLogin()
       return
     }
@@ -307,6 +308,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
         }
       } else {
         if (response.status === 401 || response.status === 403) {
+          handleClose()
           if (onLogin) onLogin()
         } else {
           try {
@@ -320,6 +322,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
       }
     } catch (error) {
       if (error instanceof Error && error.message.includes('인증')) {
+        handleClose()
         if (onLogin) onLogin()
       } else {
         const errorMessage = error instanceof Error ? error.message : '찜하기 처리에 실패했습니다.'
@@ -330,12 +333,14 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
 
   const handleJoinEvent = async () => {
     if (!isLoggedIn) {
+      handleClose()
       if (onLogin) onLogin()
       return
     }
 
     const token = getAuthToken()
     if (!token) {
+      handleClose()
       if (onLogin) onLogin()
       return
     }
@@ -389,6 +394,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
             : '이미 신청한 모집글입니다'
           addToast(duplicateMessage, 'error')
         } else if (response.status === 401) {
+          handleClose()
           if (onLogin) onLogin()
         } else {
           const errorMessage = (errorData?.message && errorData.message !== '요청 처리 중 오류가 발생했습니다.') 
@@ -399,6 +405,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
       }
     } catch (error) {
       if (error instanceof Error && error.message.includes('인증')) {
+        handleClose()
         if (onLogin) onLogin()
       } else {
         const errorMessage = error instanceof Error ? error.message : '참가 신청에 실패했습니다.'
