@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation"
 import CalendarView from "@/components/calendar-view"
 import { apiClient } from "@/lib/api-client"
 import type { Post } from "@/types/api"
+// import { PostListResponse } from "@/lib/api-client"
 
 const sports = [
   { id: "ALL", name: "전체", icon: "🏃" },
@@ -30,6 +31,7 @@ const genderMap = {
   "남자": "MALE",
   "여자": "FEMALE",
 };
+
 
 function formatTimeToKorean12Hour(dateString: string) {
   if (!dateString) return "";
@@ -74,7 +76,12 @@ export default function MainPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  
+  // pagination states (추가)
+  const [page, setPage] = useState<number>(0)
+  const [size] = useState<number>(10) // 기본 10개
+  const [totalElements, setTotalElements] = useState<number>(0); // 총 게시물 수
+  const [totalPages, setTotalPages] = useState<number>(1);       // 총 페이지 수
+    
   const handleCreatePost = () => {
     const token = getAuthToken();
     if (!token) {
@@ -107,8 +114,13 @@ export default function MainPage() {
   }, []);
 
   useEffect(() => {
-    apiClient.getPosts().then(setPosts);
-  }, []);
+  apiClient.getPosts()
+    .then(response => setPosts(response.posts))  // posts 배열만 setPosts에 전달
+    .catch(error => {
+      console.error(error);
+      setPosts([]);
+    });
+}, []);
 
   useEffect(() => {
     const fetchMyFollows = async () => {
@@ -125,7 +137,12 @@ export default function MainPage() {
   useEffect(() => {
     fetchPosts()
     fetchFavorites()
+  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate, page])
+
+  useEffect(() => {
+    setPage(0) // <-- 추가: 필터/정렬 바뀌면 1페이지로
   }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate])
+
 
   const fetchPosts = async () => {
     try {
@@ -137,9 +154,24 @@ export default function MainPage() {
         search: searchQuery || undefined,
         gender: genderMap[selectedGender as keyof typeof genderMap],
         date: selectedDate || undefined,
+        page,
+        size,
       }
-      const posts = await apiClient.getPosts(params);  
-      setPosts(posts);
+      const res = await apiClient.getPosts(params);
+      console.log('API response:', res);
+      // 서버가 { posts, page, size, totalElements, totalPages } 형태로 응답하면 posts 추출
+      if (res && typeof res === "object" && Array.isArray((res as any).posts)) {
+        setPosts((res).posts);
+        // setPage(res.page);
+        setTotalElements(res.totalElements);
+        setTotalPages(res.totalPages);
+        // (옵션) 서버 페이지 정보를 사용하려면 setPage((res as any).page || 0) 등으로 처리
+      } else if (Array.isArray(res)) {
+        // 기존 방식: 배열 바로 사용
+        setPosts(res);
+      } else {
+        setPosts([]);
+      }
     } catch (error) {
       console.error("Failed to fetch posts:", error)
       setError("게시글을 불러오는데 실패했습니다.")
@@ -148,6 +180,12 @@ export default function MainPage() {
       setLoading(false)
     }
   }
+
+  const handlePageChange = (newPage: number) => {
+  if (newPage >= 0 && newPage < totalPages) {
+    setPage(newPage);
+  }
+};
 
   useEffect(() => {
     console.log(posts);
@@ -227,6 +265,46 @@ export default function MainPage() {
     }
     return filteredPosts;
   })();
+
+  // NEW: pagination 계산
+  // const totalElements = sortedPosts.length;
+  // const totalPages = Math.max(1, Math.ceil(totalElements / size));
+  // console.log('API response pagination:', totalPages, totalElements);
+
+  // NEW: 보정 - 필터 변경 등으로 현재 page가 초과하면 마지막 페이지로 이동
+  useEffect(() => {
+    if (page >= totalPages) {
+      setPage(Math.max(0, totalPages - 1));
+    }
+    
+  }, [totalPages, page]);
+
+  // NEW: 현재 페이지에 해당하는 slice
+  const fromIndex = page * size;
+  const toIndex = Math.min(fromIndex + size, totalElements);
+  // const pagedPosts = sortedPosts.slice(fromIndex, toIndex);
+  const pagedPosts = sortedPosts;
+
+  
+  console.log('Current page:', page);
+  console.log('fromIndex, toIndex:', fromIndex, toIndex);
+  console.log('pagedPosts:', pagedPosts);
+
+  // NEW: 페이지 번호 창(최대 5개) 계산 헬퍼
+  const getPageRange = (current: number, last: number, maxShown = 5) => {
+    const half = Math.floor(maxShown / 2);
+    let start = Math.max(0, current - half);
+    let end = Math.min(last - 1, start + maxShown - 1);
+    if (end - start + 1 < maxShown) {
+      start = Math.max(0, end - maxShown + 1);
+    }
+    const range: number[] = [];
+    for (let i = start; i <= end; i++) range.push(i);
+    return range;
+  }
+  const pageRange = getPageRange(page, totalPages, 5);
+  
+
 
   return (
     <div className="min-h-screen bg-white">
@@ -624,127 +702,155 @@ export default function MainPage() {
               )}
 
               {!loading && !error && filteredPosts.length > 0 && (
-                <div className="grid gap-8 lg:grid-cols-2">
-                  {sortedPosts.map((post) => (
-                    <Card key={post.id} className="group bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden">
-                      <CardContent className="p-8">
-                        <div className="flex justify-between items-start mb-6">
-                          <div className="flex items-center gap-3">
-                            <Badge className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full font-semibold">
-                              {post.sports}
-                            </Badge>
-                            <Badge
-                              className={`px-4 py-2 rounded-full font-semibold ${
-                                post.status === "모집중" 
-                                  ? "bg-green-100 text-green-700" 
-                                  : "bg-red-100 text-red-700"
-                              }`}
+                <>
+                  <div className="grid gap-8 lg:grid-cols-2">
+                    {pagedPosts.map((post) => (
+                      <Card key={post.id} className="group bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+                        <CardContent className="p-8">
+                          <div className="flex justify-between items-start mb-6">
+                            <div className="flex items-center gap-3">
+                              <Badge className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full font-semibold">
+                                {post.sports}
+                              </Badge>
+                              <Badge
+                                className={`px-4 py-2 rounded-full font-semibold ${
+                                  post.status === "모집중" 
+                                    ? "bg-green-100 text-green-700" 
+                                    : "bg-red-100 text-red-700"
+                                }`}
+                              >
+                                {post.status}
+                              </Badge>
+                            </div>
+                            <button 
+                              onClick={() => toggleFavorite(post.id)} 
+                              className="p-3 hover:bg-gray-100 rounded-xl transition-colors"
                             >
-                              {post.status}
-                            </Badge>
+                              <Heart
+                                className={`w-6 h-6 ${
+                                  favorites.includes(Number(post.id)) 
+                                    ? "fill-red-500 text-red-500" 
+                                    : "text-gray-400 hover:text-red-400"
+                                }`}
+                              />
+                            </button>
                           </div>
-                          <button 
-                            onClick={() => toggleFavorite(post.id)} 
-                            className="p-3 hover:bg-gray-100 rounded-xl transition-colors"
-                          >
-                            <Heart
-                              className={`w-6 h-6 ${
-                                favorites.includes(Number(post.id)) 
-                                  ? "fill-red-500 text-red-500" 
-                                  : "text-gray-400 hover:text-red-400"
-                              }`}
-                            />
-                          </button>
-                        </div>
 
-                        <h4 className="font-bold text-gray-900 mb-6 text-xl group-hover:text-gray-700 transition-colors">
-                          {post.title}
-                        </h4>
+                          <h4 className="font-bold text-gray-900 mb-6 text-xl group-hover:text-gray-700 transition-colors">
+                            {post.title}
+                          </h4>
 
-                        <div className="space-y-4 mb-8">
-                          <div className="flex items-center gap-4 text-gray-600">
-                            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-                              <MapPin className="w-5 h-5 text-red-600" />
+                          <div className="space-y-4 mb-8">
+                            <div className="flex items-center gap-4 text-gray-600">
+                              <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                                <MapPin className="w-5 h-5 text-red-600" />
+                              </div>
+                              <span className="font-medium">{post.town}</span>
                             </div>
-                            <span className="font-medium">{post.town}</span>
-                          </div>
-                          <div className="flex items-center gap-4 text-gray-600">
-                            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                              <Clock className="w-5 h-5 text-blue-600" />
+                            <div className="flex items-center gap-4 text-gray-600">
+                              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                                <Clock className="w-5 h-5 text-blue-600" />
+                              </div>
+                              <span className="font-medium">
+                                {post.date?.split("T")[0]} {post.date && formatTimeToKorean12Hour(post.date)}
+                              </span>
                             </div>
-                            <span className="font-medium">
-                              {post.date?.split("T")[0]} {post.date && formatTimeToKorean12Hour(post.date)}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-4 text-gray-600">
-                            <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
-                              <Users className="w-5 h-5 text-green-600" />
+                            <div className="flex items-center gap-4 text-gray-600">
+                              <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                                <Users className="w-5 h-5 text-green-600" />
+                              </div>
+                              <span className="font-medium">
+                                {post.currentPeople}/{post.maxPeople}명 참여
+                              </span>
                             </div>
-                            <span className="font-medium">
-                              {post.currentPeople}/{post.maxPeople}명 참여
-                            </span>
                           </div>
-                        </div>
 
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="flex -space-x-2">
-                              {post.participants?.slice(0, 3).map((participant, idx) => (
-                                <div
-                                  key={participant.id || idx}
-                                  className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full border-3 border-white flex items-center justify-center text-sm text-white font-semibold shadow-lg"
-                                >
-                                  {participant.nickName?.charAt(0) || "?"}
-                                </div>
-                              ))}
-                              {post.currentPeople > 3 && (
-                                <div className="w-10 h-10 bg-gray-500 rounded-full border-3 border-white flex items-center justify-center text-sm text-white font-semibold shadow-lg">
-                                  +{post.currentPeople - 3}
-                                </div>
-                              )}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="flex -space-x-2">
+                                {post.participants?.slice(0, 3).map((participant, idx) => (
+                                  <div
+                                    key={participant.id || idx}
+                                    className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full border-3 border-white flex items-center justify-center text-sm text-white font-semibold shadow-lg"
+                                  >
+                                    {participant.nickName?.charAt(0) || "?"}
+                                  </div>
+                                ))}
+                                {post.currentPeople > 3 && (
+                                  <div className="w-10 h-10 bg-gray-500 rounded-full border-3 border-white flex items-center justify-center text-sm text-white font-semibold shadow-lg">
+                                    +{post.currentPeople - 3}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-right flex items-center gap-6">
+                              <div>
+                                <p className="text-sm text-gray-500 font-medium mb-1">참가비</p>
+                                <p className="text-2xl font-bold text-gray-900">
+                                  {post.cost === 0 || post.cost === undefined
+                                    ? "무료"
+                                    : `${Number(post.cost).toLocaleString()}원`}
+                                </p>
+                              </div>
+                              <Link href={`/post/${post.id}`}>
+                                <button className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors font-semibold group-hover:scale-105">
+                                  상세보기
+                                  <ArrowRight className="w-4 h-4" />
+                                </button>
+                              </Link>
                             </div>
                           </div>
-                          <div className="text-right flex items-center gap-6">
-                            <div>
-                              <p className="text-sm text-gray-500 font-medium mb-1">참가비</p>
-                              <p className="text-2xl font-bold text-gray-900">
-                                {post.cost === 0 || post.cost === undefined
-                                  ? "무료"
-                                  : `${Number(post.cost).toLocaleString()}원`}
-                              </p>
-                            </div>
-                            <Link href={`/post/${post.id}`}>
-                              <button className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors font-semibold group-hover:scale-105">
-                                상세보기
-                                <ArrowRight className="w-4 h-4" />
-                              </button>
-                            </Link>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {/* ---------- Pagination controls ---------- */}
+                  <div className="mt-10 flex items-center justify-center gap-3">
+                    <button
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      disabled={page === 0}
+                      className={`px-4 py-2 rounded-lg ${page === 0 ? "bg-gray-100 text-gray-400" : "bg-white border border-gray-200 hover:bg-gray-50"}`}
+                      aria-label="Previous page"
+                    >
+                      이전
+                    </button>
+
+                    {pageRange.map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+            
+                        className={`px-4 py-2 rounded-lg ${p === page ? "bg-black text-white" : "bg-white border border-gray-200 hover:bg-gray-50"}`}
+                        aria-current={p === page ? "page" : undefined}
+                      >
+                        {p + 1}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                      disabled={page >= totalPages - 1}
+                      className={`px-4 py-2 rounded-lg ${page >= totalPages - 1 ? "bg-gray-100 text-gray-400" : "bg-white border border-gray-200 hover:bg-gray-50"}`}
+                      aria-label="Next page"
+                    >
+                      다음
+                    </button>
+                  </div>
+                  
+
+                  <p className="mt-4 text-center text-sm text-gray-500">
+                    총 {totalElements}건 · {page + 1}/{totalPages} 페이지
+                  </p>
+                  {/* ------------------------------------------ */}
+                </>
               )}
             </>
           )}
         </div>
       </section>
 
-      <section className="py-24 bg-gradient-to-r from-gray-900 to-black text-white">
-        <div className="max-w-4xl mx-auto text-center px-6">
-          <h4 className="text-4xl md:text-5xl font-bold mb-8">
-            운동 메이트를 모집해보세요
-          </h4>
-          <button
-            onClick={handleCreatePost}
-            className="inline-flex items-center gap-3 bg-white text-black px-12 py-4 rounded-full text-xl font-bold hover:bg-gray-100 transition-all duration-300 hover:scale-105"
-          >
-            모집글 작성하기
-            <ArrowRight className="w-6 h-6" />
-          </button>
-        </div>
-      </section>
+
     </div>
   )
 }
