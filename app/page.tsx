@@ -79,6 +79,7 @@ export default function MainPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+
   // pagination states (추가)
   const [page, setPage] = useState<number>(0)
   const [size] = useState<number>(10) // 기본 10개
@@ -753,6 +754,7 @@ export default function MainPage() {
                                     : `${Number(post.cost).toLocaleString()}원`}
                                 </p>
                               </div>
+
                               <button
                                 onClick={() => {
                                   setSelectedPostId(post.id);
@@ -763,6 +765,7 @@ export default function MainPage() {
                                 상세보기
                                 <ArrowRight className="w-4 h-4" />
                               </button>
+
                             </div>
                           </div>
                         </CardContent>
@@ -781,6 +784,7 @@ export default function MainPage() {
                       onLogin={() => router.push('/login')} 
                     />
                   )}
+
                   </div>
 
                   {/* ---------- Pagination controls ---------- */}
