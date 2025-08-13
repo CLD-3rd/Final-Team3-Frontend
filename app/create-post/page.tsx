@@ -241,10 +241,9 @@ export default function CreatePostPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // 예측 결과 선택 처리
   const handlePredictionSelect = (prediction: PlacePrediction) => {
-    // 주요 장소명만 설정 (주소는 제외)
-    setFormData(prev => ({ ...prev, location: prediction.structured_formatting.main_text }))
+    // 표시용은 전체 설명을 사용
+    setFormData(prev => ({ ...prev, location: prediction.description }))
     setShowPredictions(false)
     setPredictions([])
   }
@@ -756,7 +755,6 @@ export default function CreatePostPage() {
                 </div>
               </div>
             </div>
-            
             <div className="pt-8">
               <button
                 type="submit"

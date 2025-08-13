@@ -100,6 +100,11 @@ export default function SignupPage() {
     window.location.href = kakaoAuthUrl;
   };
 
+  const validateNickname = (nickname: string) => /^[가-힣a-zA-Z0-9]{2,10}$/.test(nickname)
+
+  const isInvalidNickname =
+  !!formData.nickname && !validateNickname(formData.nickname);
+
   const handleSportToggle = (sportId: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -205,6 +210,18 @@ export default function SignupPage() {
       }
     }
 
+    if (isInvalidNickname) {
+      setError("닉네임을 확인하세요");
+      setLoading(false);
+      return;
+    }
+
+    if (nicknameChecked !== true) {
+      setError("닉네임 중복 확인을 해주세요");
+      setLoading(false);
+      return;
+    }
+
     if (!formData.gender) {
       setError("성별을 선택해주세요.")
       setLoading(false)
@@ -219,6 +236,12 @@ export default function SignupPage() {
 
     if (!formData.sido || !formData.sigungu) {
       setError("지역을 선택해주세요.")
+      setLoading(false)
+      return
+    }
+
+    if (!formData.sports){
+      setError("선호 종목을 선택해주세요.")
       setLoading(false)
       return
     }
@@ -407,17 +430,42 @@ export default function SignupPage() {
                 className="flex-1"
                 required
               />
-              <Button type="button" variant="outline" size="sm" className="bg-blue-500 text-white border-blue-500 px-4" onClick={handleNicknameCheck}>
-                중복확인
+              <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="bg-blue-500 text-white border-blue-500 px-4"
+                  onClick={async () => {
+                    // ⚠️ 형식이 유효하지 않으면 중복확인 막기
+                    if (isInvalidNickname) {
+                      setNicknameChecked(null);
+                      setNicknameError("2-10자의 한글, 영문, 숫자만 사용할 수 있어요"); // 필요하면 안내문구 설정 가능
+                      return;
+                    }
+                    await handleNicknameCheck();
+                  }}
+                >      
+                  중복확인
               </Button>
             </div>
-            {nicknameChecked === true && (
+            {formData.nickname &&
+              !validateNickname(formData.nickname) &&
+              (
+                <div className="flex items-center gap-2 pl-1 mt-2 text-red-500">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                  <p className="text-xs font-medium">
+                    2-10자의 한글, 영문, 숫자만 사용할 수 있어요
+                  </p>
+                </div>
+              )}    
+
+            {!isInvalidNickname && nicknameChecked === true && (
               <p className="text-sm text-green-600 mt-1">✓ 사용 가능한 닉네임입니다.</p>
             )}
-            {nicknameChecked === false && (
+            {!isInvalidNickname && nicknameChecked === false && (
               <p className="text-sm text-red-600 mt-1">이미 사용 중인 닉네임입니다.</p>
             )}
-            {nicknameError && (
+            {!isInvalidNickname && nicknameError && (
               <p className="text-sm text-red-600 mt-1">{nicknameError}</p>
             )}
           </div>

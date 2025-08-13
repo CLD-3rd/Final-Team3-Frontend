@@ -231,27 +231,6 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
     onClose()
   }
 
-  // const handleShare = async () => {
-  //   if (navigator.share) {
-  //     try {
-  //       await navigator.share({
-  //         title: post?.title || '스포츠 메이트 모집',
-  //         text: `${formatTimeToKorean12Hour(post?.date || '')} ${getSportName(post?.sports || '')} 모집`,
-  //         url: window.location.href
-  //       })
-  //     } catch (error) {
-  //       console.error('공유 실패:', error)
-  //     }
-  //   } else {
-  //     try {
-  //       await navigator.clipboard.writeText(window.location.href)
-  //       addToast('링크가 복사되었습니다!', 'success')
-  //     } catch (error) {
-  //       console.error('클립보드 복사 실패:', error)
-  //     }
-  //   }
-  // }
-
   const toggleFavorite = async () => {
     if (!isLoggedIn) {
       if (onLogin) onLogin()
