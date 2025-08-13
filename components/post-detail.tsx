@@ -233,6 +233,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
 
   const toggleFavorite = async () => {
     if (!isLoggedIn) {
+      handleClose()
       if (onLogin) onLogin()
       return
     }
@@ -286,6 +287,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
         }
       } else {
         if (response.status === 401 || response.status === 403) {
+          handleClose()
           if (onLogin) onLogin()
         } else {
           try {
@@ -299,6 +301,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
       }
     } catch (error) {
       if (error instanceof Error && error.message.includes('인증')) {
+        handleClose()
         if (onLogin) onLogin()
       } else {
         const errorMessage = error instanceof Error ? error.message : '찜하기 처리에 실패했습니다.'
@@ -309,12 +312,14 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
 
   const handleJoinEvent = async () => {
     if (!isLoggedIn) {
+      handleClose()
       if (onLogin) onLogin()
       return
     }
 
     const token = getAuthToken()
     if (!token) {
+      handleClose()
       if (onLogin) onLogin()
       return
     }
@@ -368,6 +373,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
             : '이미 신청한 모집글입니다'
           addToast(duplicateMessage, 'error')
         } else if (response.status === 401) {
+          handleClose()
           if (onLogin) onLogin()
         } else {
           const errorMessage = (errorData?.message && errorData.message !== '요청 처리 중 오류가 발생했습니다.') 
@@ -378,6 +384,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
       }
     } catch (error) {
       if (error instanceof Error && error.message.includes('인증')) {
+        handleClose()
         if (onLogin) onLogin()
       } else {
         const errorMessage = error instanceof Error ? error.message : '참가 신청에 실패했습니다.'
@@ -743,7 +750,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                         <button
                           onClick={handleJoinEvent}
                           disabled={post.status !== 'OPEN' || isJoined}
-                          className={`px-12 py-4 rounded-2xl font-bold text-lg transition-all duration-300 ${
+                          className={`px-12 py-3 rounded-2xl font-bold text-lg transition-all duration-300 ${
                             post.status === 'OPEN' && !isJoined
                               ? 'bg-white text-black hover:bg-gray-100 hover:scale-105 shadow-lg'
                               : 'bg-gray-600 text-gray-300 cursor-not-allowed'
@@ -761,7 +768,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                         
                         <button
                           onClick={toggleFavorite}
-                          className="flex items-center gap-2 px-6 py-3 border border-white/30 text-white rounded-2xl hover:bg-white/10 transition-colors"
+                          className="flex items-center gap-2 px-6 py-3 text-lg border border-white/30 text-white rounded-2xl hover:bg-white/10 transition-colors"
                         >
                           <Heart className={`w-5 h-5 ${
                             isLoggedIn && isFavorited ? 'fill-red-400 text-red-400' : ''
