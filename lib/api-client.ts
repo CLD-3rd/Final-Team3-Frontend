@@ -118,7 +118,7 @@ class ApiClient {
   // Posts methods
   async getPosts(params?: {
     sport?: string
-    sortBy?: string
+    sortType?: string
     search?: string
     region?: string
     gender?: string

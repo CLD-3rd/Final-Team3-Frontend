@@ -11,7 +11,6 @@ import { useRouter } from "next/navigation"
 import CalendarView from "@/components/calendar-view"
 import { apiClient } from "@/lib/api-client"
 import type { Post } from "@/types/api"
-// import { PostListResponse } from "@/lib/api-client"
 
 const sports = [
   { id: "ALL", name: "전체", icon: "🏃" },
@@ -59,7 +58,7 @@ const getAuthToken = () => localStorage.getItem("auth_token");
 
 export default function MainPage() {
   const router = useRouter();
-  const [sortBy, setSortBy] = useState("recent")
+  const [sortType, setSortType] = useState("DATE")
   const [selectedSport, setSelectedSport] = useState("전체")
   const [searchQuery, setSearchQuery] = useState("")
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
@@ -137,11 +136,11 @@ export default function MainPage() {
   useEffect(() => {
     fetchPosts()
     fetchFavorites()
-  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate, page])
+  }, [selectedSport, sortType, searchQuery, selectedRegion, selectedGender, selectedDate, page])
 
   useEffect(() => {
     setPage(0) // <-- 추가: 필터/정렬 바뀌면 1페이지로
-  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate])
+  }, [selectedSport, sortType, searchQuery, selectedRegion, selectedGender, selectedDate])
 
 
   const fetchPosts = async () => {
@@ -150,7 +149,7 @@ export default function MainPage() {
       setError("")
       const params = {
         sports: selectedSport !== "전체" ? selectedSport : undefined,
-        sortBy,
+        sortType: sortType,
         search: searchQuery || undefined,
         gender: genderMap[selectedGender as keyof typeof genderMap],
         date: selectedDate || undefined,
@@ -229,48 +228,6 @@ export default function MainPage() {
   const now = new Date();
   const myMainRegion = extractMainRegion(myRegion);
 
-  const filteredPosts = posts.filter(post => {
-    // 1. 지역 필터
-    const regionMatch = selectedRegion === "모든 지역"
-      ? true
-      : selectedRegion === "내 지역"
-        ? extractMainRegion(post.town) === myMainRegion
-        : post.town === selectedRegion;
-
-    if (!regionMatch) return false;
-
-    // 2. 현재 시각 이후 모집글만 (항상 적용)
-    if (post.date) {
-      const postDateTime = new Date(post.date.replace(" ", "T"));
-      // 현재 시각 이후만 남김
-      if (postDateTime <= now) return false;
-    }
-
-    // 3. 특정 날짜가 선택된 경우 해당 날짜만 필터링
-    if (selectedDate) {
-      const postDateStr = post.date?.split("T")[0];
-      if (postDateStr !== selectedDate) return false;
-    }
-
-    // selectedDate가 없으면 모두 통과
-    return true;
-  });
-
-  const sortedPosts = (() => {
-    if (sortBy === "popular") {
-      return [...filteredPosts].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
-    }
-    if (sortBy === "recent") {
-      return [...filteredPosts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }
-    return filteredPosts;
-  })();
-
-  // NEW: pagination 계산
-  // const totalElements = sortedPosts.length;
-  // const totalPages = Math.max(1, Math.ceil(totalElements / size));
-  // console.log('API response pagination:', totalPages, totalElements);
-
   // NEW: 보정 - 필터 변경 등으로 현재 page가 초과하면 마지막 페이지로 이동
   useEffect(() => {
     if (page >= totalPages) {
@@ -283,7 +240,7 @@ export default function MainPage() {
   const fromIndex = page * size;
   const toIndex = Math.min(fromIndex + size, totalElements);
   // const pagedPosts = sortedPosts.slice(fromIndex, toIndex);
-  const pagedPosts = sortedPosts;
+  const pagedPosts = posts;
 
   
   console.log('Current page:', page);
@@ -623,7 +580,7 @@ export default function MainPage() {
                     {selectedDate ? `${selectedDate} 모집글` : "모집글 목록"}
                   </h3>
                   <p className="text-gray-500 mt-1">
-                    총 {filteredPosts.length}개의 모집글
+                    총 {posts.length}개의 모집글
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -639,9 +596,9 @@ export default function MainPage() {
                     </button>
                   )}
                   <button
-                    onClick={() => setSortBy("popular")}
+                    onClick={() => setSortType("POPULAR")}
                     className={`px-4 py-2 rounded-xl font-medium transition-colors ${
-                      sortBy === "popular" 
+                      sortType === "POPULAR" 
                         ? "bg-gray-900 text-white" 
                         : "text-gray-600 hover:bg-gray-100"
                     }`}
@@ -649,9 +606,9 @@ export default function MainPage() {
                     인기순
                   </button>
                   <button
-                    onClick={() => setSortBy("nearest")}
+                    onClick={() => setSortType("DATE")}
                     className={`px-4 py-2 rounded-xl font-medium transition-colors ${
-                      sortBy === "nearest" 
+                      sortType === "DATE" 
                         ? "bg-gray-900 text-white" 
                         : "text-gray-600 hover:bg-gray-100"
                     }`}
@@ -683,7 +640,7 @@ export default function MainPage() {
                 </div>
               )}
 
-              {!loading && !error && filteredPosts.length === 0 && (
+              {!loading && !error && posts.length === 0 && (
                 <div className="text-center py-16">
                   <div className="w-24 h-24 bg-gray-50 rounded-2xl mx-auto mb-8 flex items-center justify-center">
                     <Users className="w-12 h-12 text-gray-400" />
@@ -701,7 +658,7 @@ export default function MainPage() {
                 </div>
               )}
 
-              {!loading && !error && filteredPosts.length > 0 && (
+              {!loading && !error && posts.length > 0 && (
                 <>
                   <div className="grid gap-8 lg:grid-cols-2">
                     {pagedPosts.map((post) => (
