@@ -11,10 +11,11 @@ import { useRouter } from "next/navigation"
 import CalendarView from "@/components/calendar-view"
 import { apiClient } from "@/lib/api-client"
 import type { Post } from "@/types/api"
+import EventDetailModal from "@/components/post-detail"
 
 const sports = [
   { id: "ALL", name: "전체", icon: "🏃" },
-  { id: "SOCCER", name: "축구", icon: "⚽" },
+  { id: "FOOTBALL", name: "축구", icon: "⚽" },
   { id: "TENNIS", name: "테니스", icon: "🎾" },
   { id: "TABLE_TENNIS", name: "탁구", icon: "🏓" },
   { id: "BASKETBALL", name: "농구", icon: "🏀" },
@@ -22,7 +23,7 @@ const sports = [
   { id: "VOLLEYBALL", name: "배구", icon: "🏐" },
 ]
 
-const regions = ["서울", "경기", "대전", "대구", "인천", "울산", "광주", "세종", "충북", "충남", "경북", "경남", "전북", "전남", "제주"]
+const regions = ["서울", "경기", "강원", "대전", "대구", "인천", "울산", "부산", "광주", "세종", "충북", "충남", "경북", "경남", "전북", "전남", "제주"]
 const genders = ["남녀 모두", "남자", "여자"]
 
 const genderMap = {

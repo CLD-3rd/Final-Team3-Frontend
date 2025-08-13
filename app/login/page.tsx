@@ -15,7 +15,9 @@ import { useSearchParams } from "next/navigation"
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const kakaoToken = searchParams.get("kakaoToken")
+  // const kakaoToken = searchParams.get("kakaoToken")
+  const code = searchParams.get("code")
+  // const [tokenSaved, setTokenSaved] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [rememberEmail, setRememberEmail] = useState(false)
   const [formData, setFormData] = useState({
@@ -26,6 +28,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
+  // 일반 로그인
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -55,19 +58,25 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
+    // 이 안에서만 kakaoToken 처리
+    const kakaoToken = searchParams.get("kakaoToken")
+    console.log('kakaoToken:', kakaoToken);
+    if (kakaoToken) {
+      // 토큰 저장
+      localStorage.setItem("auth_token", kakaoToken)
+      // 메인페이지로 이동
+      window.location.replace("/") // router.replace("/")도 가능, 그러나 확실히 새로고침할 땐 window.location 추천
+    }
+  }, [searchParams])
+
+
+  useEffect(() => {
     const savedEmail = localStorage.getItem("rememberedEmail")
     if (savedEmail) {
       setFormData((prev) => ({ ...prev, email: savedEmail }))
       setRememberEmail(true)
     }
   }, [])
-
-  useEffect(() => {
-    if (kakaoToken) {
-      localStorage.setItem("auth_token", kakaoToken)
-      window.location.href = "/"
-    }
-  }, [kakaoToken, router])
 
   const handleKakaoLogin = async () => {
     try {

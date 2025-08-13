@@ -1,6 +1,6 @@
 import type { Post, User, CreatePostData, LoginData, SignupData, ApiResponse } from "@/types/api"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"
 
 export interface PostListResponse {
     posts: Post[]
@@ -114,7 +114,13 @@ class ApiClient {
   return await res.json();
 }
 
-  
+  // // 🔧 추가: 카카오 로그인 콜백
+  async kakaoLoginCallback(code: string): Promise<ApiResponse<{ token: string } | { signupRequired: boolean; email: string }>> {
+    return this.request<ApiResponse<any>>(`/user/oauth/kakao/login-callback?code=${code}`, {
+      method: "GET",
+    });
+  }
+
   // Posts methods
   async getPosts(params?: {
     sport?: string
@@ -282,7 +288,7 @@ export const apiClient = new ApiClient(API_BASE_URL)
 
 export async function fetchPostsCalender(year: number, month: number) {
   const monthStr = month.toString().padStart(2, "0");
-  const response = await fetch(`http://localhost:8080/api/posts/calender?month=${year}-${monthStr}`);
+  const response = await fetch(`${API_BASE_URL}/posts/calender?month=${year}-${monthStr}`);
   if (!response.ok) throw new Error("Failed to fetch calendar events");
   return await response.json();
 }

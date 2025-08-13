@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ChevronRight, User, Settings, FileText, Heart, List, ReceiptPoundSterling, Home, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { API_BASE_URL } from "@/lib/api-client";
 
 interface ApiResponse<T> {
   code: string
@@ -147,28 +148,28 @@ export default function MyPage() {
   }
 
   const fetchUserProfile = async (): Promise<UserProfile> => {
-    const response = await makeAuthenticatedRequest('http://localhost:8080/api/user/mypage')
+    const response = await makeAuthenticatedRequest(`${API_BASE_URL}/user/mypage`)
     if (!response) return Promise.reject(new Error('인증이 필요합니다'))
     const result: ApiResponse<UserProfile> = await response.json()
     return result.data
   }
 
   const fetchMyPosts = async (): Promise<MyPost[]> => {
-    const response = await makeAuthenticatedRequest('http://localhost:8080/api/posts/mine')
+    const response = await makeAuthenticatedRequest(`${API_BASE_URL}/posts/mine`)
     if (!response) return Promise.reject(new Error('인증이 필요합니다'))
     const result: ApiResponse<MyPosts> = await response.json()
     return result.data.posts
   }
 
   const fetchMyFollows = async (): Promise<FollowPost[]> => {
-    const response = await makeAuthenticatedRequest('http://localhost:8080/api/user/follow')
+    const response = await makeAuthenticatedRequest(`${API_BASE_URL}/user/follow`)
     if (!response) return Promise.reject(new Error('인증이 필요합니다'))
     const result: ApiResponse<FollowPost[]> = await response.json()
     return result.data
   }
 
   const fetchMyApplications = async (): Promise<MyApplication[]> => {
-    const response = await makeAuthenticatedRequest('http://localhost:8080/api/posts/apply')
+    const response = await makeAuthenticatedRequest(`${API_BASE_URL}/posts/apply`)
     if (!response) return Promise.reject(new Error('인증이 필요합니다'))
     const result: ApiResponse<MyApplication[]> = await response.json()
     return result.data

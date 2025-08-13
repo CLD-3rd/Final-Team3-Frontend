@@ -1,16 +1,17 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Minus, Plus, Upload, X, CheckCircle, AlertCircle } from "lucide-react"
+import { ArrowLeft, Minus, Plus, Upload, X, CheckCircle, AlertCircle, MapPin } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
 import { Search } from "lucide-react"
+import { API_BASE_URL } from "@/lib/api-client";
 
 const townOptions = [
   { label: "서울", value: "SEOUL" },
@@ -46,6 +47,47 @@ const genderOptions = [
   { id: "MALE", name: "남성만" },
   { id: "FEMALE", name: "여성만" },
 ]
+
+// Google Maps API 타입 선언
+declare global {
+  interface Window {
+    google: {
+      maps: {
+        places: {
+          AutocompleteService: new () => {
+            getPlacePredictions: (
+              request: {
+                input: string
+                componentRestrictions: { country: string }
+                types: string[]
+                language: string
+              },
+              callback: (predictions: any[], status: string) => void
+            ) => void
+          }
+          PlacesServiceStatus: {
+            OK: string
+            ZERO_RESULTS: string
+            OVER_QUERY_LIMIT: string
+            REQUEST_DENIED: string
+            INVALID_REQUEST: string
+            NOT_FOUND: string
+          }
+        }
+      }
+    }
+  }
+}
+
+// 구글 Places API 타입 정의
+interface PlacePrediction {
+  place_id: string
+  description: string
+  structured_formatting: {
+    main_text: string
+    secondary_text: string
+  }
+}
 
 // 토스트 컴포넌트
 const Toast = ({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) => (
@@ -86,6 +128,127 @@ export default function CreatePostPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [toasts, setToasts] = useState<{ id: number; message: string; type: 'success' | 'error' }[]>([])
 
+  // Places API 관련 상태
+  const [predictions, setPredictions] = useState<PlacePrediction[]>([])
+  const [showPredictions, setShowPredictions] = useState(false)
+  const [isLoadingPlaces, setIsLoadingPlaces] = useState(false)
+  const locationInputRef = useRef<HTMLInputElement>(null)
+  const predictionsRef = useRef<HTMLDivElement>(null)
+  const GOOGLE_PLACES_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || ""
+
+  // Google Places Autocomplete Service 초기화
+  useEffect(() => {
+    const loadGoogleMapsScript = () => {
+      if (window.google && window.google.maps) {
+        return Promise.resolve()
+      }
+
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_PLACES_API_KEY}&libraries=places&language=ko`
+        script.async = true
+        script.defer = true
+        script.onload = resolve
+        script.onerror = reject
+        document.head.appendChild(script)
+      })
+    }
+
+    loadGoogleMapsScript().catch(console.error)
+  }, [])
+
+  // Google Places Autocomplete Service를 사용한 장소 예측
+  const fetchPlacePredictions = async (input: string) => {
+    if (!input.trim() || input.length < 1) {
+      setPredictions([])
+      setShowPredictions(false)
+      return
+    }
+
+    if (!window.google || !window.google.maps || !window.google.maps.places) {
+      console.error('Google Maps API가 로드되지 않았습니다.')
+      return
+    }
+
+    setIsLoadingPlaces(true)
+    
+    try {
+      const service = new window.google.maps.places.AutocompleteService()
+      
+      const request = {
+        input: input,
+        componentRestrictions: { country: 'kr' },
+        types: ['establishment', 'geocode'],
+        language: 'ko'
+      }
+
+      service.getPlacePredictions(request, (predictions, status) => {
+        setIsLoadingPlaces(false)
+        
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+          const formattedPredictions = predictions.map(prediction => ({
+            place_id: prediction.place_id,
+            description: prediction.description,
+            structured_formatting: {
+              main_text: prediction.structured_formatting?.main_text || prediction.description,
+              secondary_text: prediction.structured_formatting?.secondary_text?.replace('대한민국 ', '') || ''
+            }
+          }))
+          
+          setPredictions(formattedPredictions)
+          setShowPredictions(true)
+        } else {
+          setPredictions([])
+          setShowPredictions(false)
+        }
+      })
+    } catch (error) {
+      console.error('Places API 오류:', error)
+      setPredictions([])
+      setShowPredictions(false)
+      setIsLoadingPlaces(false)
+    }
+  }
+
+  // 실시간 자동완성 검색 (디바운스 적용)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (formData.location && formData.location.length >= 1) {
+        fetchPlacePredictions(formData.location)
+      } else {
+        setPredictions([])
+        setShowPredictions(false)
+      }
+    }, 200) // 200ms로 줄여서 더 빠른 반응
+
+    return () => clearTimeout(timeoutId)
+  }, [formData.location])
+
+  // 외부 클릭 시 예측 결과 숨기기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        locationInputRef.current && 
+        !locationInputRef.current.contains(event.target as Node) &&
+        predictionsRef.current &&
+        !predictionsRef.current.contains(event.target as Node)
+      ) {
+        setShowPredictions(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // 예측 결과 선택 처리
+  const handlePredictionSelect = (prediction: PlacePrediction) => {
+    // 주요 장소명만 설정 (주소는 제외)
+    setFormData(prev => ({ ...prev, location: prediction.structured_formatting.main_text }))
+    setShowPredictions(false)
+    setPredictions([])
+  }
+
   // 토스트 메시지 추가
   const addToast = (message: string, type: 'success' | 'error') => {
     const id = Date.now()
@@ -93,7 +256,7 @@ export default function CreatePostPage() {
     
     setTimeout(() => {
       setToasts(prev => prev.filter(toast => toast.id !== id))
-    }, 2000) // 2초로 변경
+    }, 2000)
   }
 
   const removeToast = (id: number) => {
@@ -163,7 +326,7 @@ export default function CreatePostPage() {
         town: formData.town,
         sports: formData.sport, 
         gender: formData.gender,
-        cost: formData.cost ? Number.parseInt(formData.cost) : 0, // 빈 값이면 0으로 설정
+        cost: formData.cost ? Number.parseInt(formData.cost) : 0,
         maxPeople: formData.maxParticipants,
         date: isoDateTime,
       }
@@ -185,7 +348,7 @@ export default function CreatePostPage() {
       
       headers['Authorization'] = `Bearer ${token}`
         
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/posts`, {
+      const response = await fetch(`${API_BASE_URL}/posts`, {
         method: 'POST',
         headers: headers,
         body: submitFormData,
@@ -205,7 +368,6 @@ export default function CreatePostPage() {
       if (response.status === 200 && result.code === 'POST200') {
         console.log("등록 성공! 메시지:", result.message)
         addToast(result.message ?? "모집글이 성공적으로 등록되었습니다!", 'success')
-        // 토스트가 보이도록 잠깐의 딜레이 후 이동
         setTimeout(() => router.push("/"), 500)
       } else {
         addToast("모집글 등록에 실패했습니다.", 'error')
@@ -371,17 +533,69 @@ export default function CreatePostPage() {
               )}
             </div>
 
-            <div className="space-y-3">
+            {/* Google Places API 자동완성이 적용된 상세 위치 입력 */}
+            <div className="space-y-3 relative">
               <Label className="text-lg font-semibold text-gray-900">
                 상세 위치 <span className="text-red-500">*</span>
               </Label>
-              <Input
-                placeholder="구체적인 장소명을 입력하세요 (예: OO구 OO로 OO체육관)"
-                value={formData.location}
-                onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
-                className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50"
-                required
-              />
+              <div className="relative">
+                <Input
+                  ref={locationInputRef}
+                  placeholder="장소명을 입력하세요 (예: 강남구 스포츠센터)"
+                  value={formData.location}
+                  onChange={(e) => {
+                    setFormData((prev) => ({ ...prev, location: e.target.value }))
+                  }}
+                  onFocus={() => {
+                    if (predictions.length > 0) {
+                      setShowPredictions(true)
+                    }
+                  }}
+                  className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50 pr-12"
+                  required
+                />
+                <MapPin className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                
+                {/* 로딩 인디케이터 */}
+                {isLoadingPlaces && (
+                  <div className="absolute right-12 top-1/2 -translate-y-1/2">
+                    <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-black rounded-full"></div>
+                  </div>
+                )}
+              </div>
+
+              {/* 자동완성 예측 결과 */}
+              {showPredictions && predictions.length > 0 && (
+                <div 
+                  ref={predictionsRef}
+                  className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-xl shadow-xl max-h-60 overflow-y-auto z-50"
+                >
+                  {predictions.map((prediction, index) => (
+                    <button
+                      key={prediction.place_id}
+                      type="button"
+                      onClick={() => handlePredictionSelect(prediction)}
+                      className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center gap-3 ${
+                        index !== predictions.length - 1 ? 'border-b border-gray-100' : ''
+                      } ${index === 0 ? 'rounded-t-xl' : ''} ${
+                        index === predictions.length - 1 ? 'rounded-b-xl' : ''
+                      }`}
+                    >
+                      <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 text-sm">
+                          {prediction.structured_formatting.main_text}
+                        </div>
+                        {prediction.structured_formatting.secondary_text && (
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {prediction.structured_formatting.secondary_text}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-4">

@@ -4,9 +4,7 @@ import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.dev',
+  title: 'MatchFit',
 }
 
 export default function RootLayout({
@@ -14,17 +12,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) 
-
-  /*{
-  return (
-    <html
-      lang="en"
-      className={`${GeistSans.variable} ${GeistMono.variable}`}
-    >
-      <body>{children}</body>
-    </html>
-  )
-}*/
 
   {
   return (

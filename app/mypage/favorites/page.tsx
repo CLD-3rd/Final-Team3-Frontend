@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, MapPin, Clock, Users, Heart, CheckCircle, XCircle, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { API_BASE_URL } from "@/lib/api-client";
+import EventDetailModal from "@/components/post-detail"
+
 
 interface FollowPost {
   postId: number
@@ -102,6 +105,9 @@ export default function FavoritesPage() {
   const [error, setError] = useState<string | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [mounted, setMounted] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+
 
   const getToken = () => {
     if (typeof window === 'undefined') return null
@@ -131,7 +137,7 @@ export default function FavoritesPage() {
         return
       }
 
-      const response = await fetch('http://localhost:8080/api/user/follow', {
+      const response = await fetch(`${API_BASE_URL}/user/follow`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -168,7 +174,7 @@ export default function FavoritesPage() {
         return
       }
 
-      const response = await fetch(`http://localhost:8080/api/posts/${postId}/follow`, {
+      const response = await fetch(`${API_BASE_URL}/posts/${postId}/follow`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -334,19 +340,33 @@ export default function FavoritesPage() {
                     <p className="text-lg font-bold text-red-500">
                       {formatPrice(post.cost)}
                     </p>
-                    <Link href={`/post/${post.postId}`}>
-                      <Button 
-                        size="sm" 
-                        className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm active:scale-95 transition-all duration-200"
-                      >
-                        상세보기
-                      </Button>
-                    </Link>
+                    {/* 모달 추가 부분 351-360 */}
+                    <Button
+                      size="sm"
+                      className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm active:scale-95 transition-all duration-200"
+                      onClick={() => {
+                        setSelectedPostId(post.postId);
+                        setModalOpen(true);
+                      }}
+                    >
+                      상세보기
+                    </Button>
                   </div>
                 </div>
               </CardContent>
             </Card>
           ))}
+          {/* 모달 추가 부분 366-375 */}
+          {modalOpen && selectedPostId !== null && (
+            <EventDetailModal
+              postId={selectedPostId}
+              isOpen={modalOpen}
+              onClose={() => {
+                setModalOpen(false);
+                setSelectedPostId(null);
+              }}
+            />
+          )}
         </div>
 
         {followPosts.length === 0 && (

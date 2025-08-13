@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation"
+import { API_BASE_URL } from "@/lib/api-client";
 
 
 const sports = [
@@ -70,7 +71,7 @@ export default function SignupPage() {
 
   useEffect(() => {
   // 컴포넌트 마운트 시 카카오 설정값 받아오기
-  fetch("http://localhost:8080/api/kakao-config")
+  fetch(`${API_BASE_URL}/kakao-config`)
     .then((res) => res.json())
     .then(setKakaoConfig)
     .catch(() => setKakaoConfig(null));
@@ -184,22 +185,24 @@ export default function SignupPage() {
       return
     }
 
-    const isLengthValid = formData.password.length >= 8
-    const hasLetter = /[a-zA-Z]/.test(formData.password)
-    const hasNumber = /\d/.test(formData.password)
-    const hasSpecialChar = /[^a-zA-Z0-9]/.test(formData.password)
-    const isPasswordValid = isLengthValid && hasLetter && hasNumber && hasSpecialChar
+    if (!formData.isKakaoUser) {
+      const isLengthValid = formData.password.length >= 8;
+      const hasLetter = /[a-zA-Z]/.test(formData.password);
+      const hasNumber = /\d/.test(formData.password);
+      const hasSpecialChar = /[^a-zA-Z0-9]/.test(formData.password);
+      const isPasswordValid = isLengthValid && hasLetter && hasNumber && hasSpecialChar;
 
-    if (!isPasswordValid) {
-      setError("비밀번호가 잘못된 형식입니다.")
-      setLoading(false)
-      return
-    }
+      if (!isPasswordValid) {
+        setError("비밀번호가 잘못된 형식입니다.");
+        setLoading(false);
+        return;
+      }
 
-    if (formData.password !== formData.confirmPassword) {
-      setError("비밀번호가 일치하지 않습니다.")
-      setLoading(false)
-      return
+      if (formData.password !== formData.confirmPassword) {
+        setError("비밀번호가 일치하지 않습니다.");
+        setLoading(false);
+        return;
+      }
     }
 
     if (!formData.gender) {
@@ -237,7 +240,7 @@ export default function SignupPage() {
       setSuccess(response.message || "회원가입이 완료되었습니다!");
       router.push("/login");  
     } else {
-      setError("회원가입에 실패했습니다."); // 응답에 .message 필드는 없으니 직접 메시지 작성
+      setError("회원가입에 실패했습니다."); 
     }
     } catch (error) {
       setError("회원가입 중 오류가 발생했습니다.")
@@ -331,6 +334,14 @@ export default function SignupPage() {
                 className="pr-10"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
               <ul className="text-sm mt-2 ml-1 space-y-1">
                 <li className={`flex items-center ${formData.password.length >= 8 ? "text-green-600" : "text-gray-500"}`}>
                   {formData.password.length >= 8 ? "✓" : "○"}&nbsp;8자 이상
@@ -344,15 +355,7 @@ export default function SignupPage() {
                 <li className={`flex items-center ${/[^a-zA-Z0-9]/.test(formData.password) ? "text-green-600" : "text-gray-500"}`}>
                   {/[^a-zA-Z0-9]/.test(formData.password) ? "✓" : "○"}&nbsp;특수문자 포함
                 </li>
-              </ul>
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
+              </ul>          
           </div>
         )}
           {/* Confirm Password */}

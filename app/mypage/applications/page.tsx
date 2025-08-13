@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, MapPin, Clock, Users, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { API_BASE_URL } from "@/lib/api-client";
+import EventDetailModal from "@/components/post-detail"
+
 
 interface ApiResponse {
   code: string
@@ -45,6 +48,8 @@ export default function ApplicationsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
 
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null
@@ -85,7 +90,7 @@ export default function ApplicationsPage() {
         return
       }
 
-      const response = await makeAuthenticatedRequest("http://localhost:8080/api/posts/apply")
+      const response = await makeAuthenticatedRequest(`${API_BASE_URL}/posts/apply`)
 
       if (!response.ok) {
         throw new Error(`서버 오류: ${response.status}`)
@@ -274,8 +279,16 @@ export default function ApplicationsPage() {
 
             <div className="space-y-4">
               {filteredApplications.map((application) => (
-                <Link key={application.id} href={`/post/${application.id}`}>
-                  <Card className="border border-gray-200 bg-white hover:shadow-md transition-all duration-200 active:scale-[0.98]">
+                // <Link key={application.id} href={`/post/${application.id}`}>
+                  // 모달 추가 부분 283-290
+                  <Card 
+                    key={application.id}
+                      className="border border-gray-200 bg-white hover:shadow-md transition-all duration-200 active:scale-[0.98] cursor-pointer"
+                      onClick={() => {
+                        setSelectedPostId(application.id)
+                        setModalOpen(true)
+                      }}
+                    >
                     <CardContent className="p-5">
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex gap-2">
@@ -312,8 +325,19 @@ export default function ApplicationsPage() {
                       </div>
                     </CardContent>
                   </Card>
-                </Link>
+                // </Link>
               ))}
+              {/* 모달 추가 부분 330-339 */}
+              {modalOpen && selectedPostId !== null && (
+                <EventDetailModal
+                  postId={selectedPostId}
+                  isOpen={modalOpen}
+                  onClose={() => {
+                    setModalOpen(false);
+                    setSelectedPostId(null);
+                  }}
+                />
+              )}
             </div>
 
             {filteredApplications.length === 0 && (
