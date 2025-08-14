@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { Search, MapPin, Clock, Users, Bell, User, Heart, Calendar, List, ChevronDown, Plus, Filter, ArrowRight, Play, Star, Trophy, Target } from "lucide-react"
+import { Search, MapPin, Clock, Users, Bell, User, Heart, Calendar, List, ChevronDown, Plus, Filter, ArrowRight, Play, Star, Trophy, Target, Eye } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import CalendarView from "@/components/calendar-view"
@@ -86,6 +86,12 @@ export default function MainPage() {
       return;
     }
     router.push('/create-post');
+  };
+
+
+  const handleRefresh = async () => {
+    await fetchPosts();
+    await fetchFavorites();
   };
 
   useEffect(() => {
@@ -372,8 +378,6 @@ export default function MainPage() {
         </div>
       </section>
 
-      
-
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
@@ -565,6 +569,16 @@ export default function MainPage() {
                     </button>
                   )}
                   <button
+                    onClick={handleRefresh}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    {loading ? "로딩중..." : ""}
+                  </button>
+                  <button
                     onClick={() => setSortBy("popular")}
                     className={`px-4 py-2 rounded-xl font-medium transition-colors ${
                       sortBy === "popular" 
@@ -646,6 +660,14 @@ export default function MainPage() {
                             >
                               {post.status}
                             </Badge>
+                            {(post.viewCount ?? 0) > 0 && (
+                              <div className="flex items-center gap-1 px-4 py-2 bg-orange-50 rounded-full">
+                                <Eye className="w-4 h-4 text-orange-500" />
+                                <span className="text-sm font-medium text-orange-600">
+                                  {post.viewCount}명 조회중
+                                </span>
+                              </div>
+                            )}
                           </div>
                           <button 
                             onClick={() => toggleFavorite(post.id)} 
@@ -701,11 +723,6 @@ export default function MainPage() {
                                   {participant.nickName?.charAt(0) || "?"}
                                 </div>
                               ))}
-                              {/* {post.currentPeople > 3 && (
-                                <div className="w-10 h-10 bg-gray-500 rounded-full border-3 border-white flex items-center justify-center text-sm text-white font-semibold shadow-lg">
-                                  +{post.currentPeople - 3}
-                                </div>
-                              )} */}
                             </div>
                           </div>
                           <div className="text-right flex items-center gap-6">
