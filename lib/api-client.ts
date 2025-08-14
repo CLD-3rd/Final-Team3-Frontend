@@ -2,14 +2,6 @@ import type { Post, User, CreatePostData, LoginData, SignupData, ApiResponse } f
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"
 
-export interface PostListResponse {
-    posts: Post[]
-    page: number
-    size: number
-    totalElements: number
-    totalPages: number
-  }
-
 class ApiClient {
   private baseURL: string
   private token: string | null = null
@@ -124,52 +116,29 @@ class ApiClient {
   // Posts methods
   async getPosts(params?: {
     sport?: string
-    sortType?: string
+    sortBy?: string
     search?: string
     region?: string
     gender?: string
-    date?: string,
-    page?: number      // 추가
-    size?: number      // 추가
-  }): Promise<PostListResponse> {  // 변경: 배열이 아니라 객체 리턴
+    date?: string
+  }): Promise<Post[]> {
     try {
       const searchParams = new URLSearchParams()
 
       if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          searchParams.append(key, String(value))  // 값이 숫자여도 문자열로 변환해서 넣기
-        }
-      })
-    }
+        Object.entries(params).forEach(([key, value]) => {
+          if (value) searchParams.append(key, value)
+        })
+      }
 
       const queryString = searchParams.toString()
       const endpoint = `/posts/list${queryString ? `?${queryString}` : ""}`
 
-      const response = await this.request<ApiResponse<PostListResponse>>(endpoint)
-
-      // response.data가 { posts, page, size, totalElements, totalPages } 형태라고 가정
-      if (response.data) {
-        return response.data
-      } else {
-        // fallback: 빈 배열 등 초기값 반환
-        return {
-          posts: [],
-          page: 0,
-          size: 10,
-          totalElements: 0,
-          totalPages: 0,
-        }
-      }
+      const response = await this.request<ApiResponse<{ posts: Post[] }>>(endpoint)
+      return response.data?.posts || []
     } catch (error) {
       console.error("Failed to fetch posts:", error)
-      return {
-        posts: [],
-        page: 0,
-        size: 10,
-        totalElements: 0,
-        totalPages: 0,
-      }
+      return []
     }
   }
 
