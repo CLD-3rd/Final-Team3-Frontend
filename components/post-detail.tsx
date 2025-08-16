@@ -25,6 +25,18 @@ interface PostData {
   userEmail?: string 
 }
 
+interface MyApplication {
+  postId: number
+  title: string
+  date: string
+  currentPeople: number
+  maxPeople: number
+  location: string
+  cost: number
+  status: "PENDING" | "APPROVED" | "REJECTED"
+  postStatus: "OPEN" | "CLOSED"
+}
+
 interface ToastMessage {
   id: number
   message: string
@@ -62,6 +74,8 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
   const [isNotifying, setIsNotifying] = useState(false)
   const [isFavorited, setIsFavorited] = useState(false)
   const [isJoined, setIsJoined] = useState(false)
+  const [myApplications, setMyApplications] = useState<MyApplication[]>([])
+  const [currentApplication, setCurrentApplication] = useState<MyApplication | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
@@ -155,6 +169,29 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
     })
   }
 
+  // 내가 신청한 모집글 목록 가져오기
+  const fetchMyApplications = async () => {
+    if (!isLoggedIn) return
+
+    try {
+      const response = await makeAuthenticatedRequest(`${API_BASE_URL}/posts/apply`)
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data && data.code === "POST208" && data.data) {
+          setMyApplications(data.data)
+          
+          // 현재 게시글에 대한 신청 상태 찾기
+          const application = data.data.find((app: MyApplication) => app.postId === postId)
+          setCurrentApplication(application || null)
+          setIsJoined(!!application)
+        }
+      }
+    } catch (error) {
+      console.error("내 신청 목록 가져오기 실패:", error)
+    }
+  }
+
   // 로그인 상태 확인
   useEffect(() => {
     const token = getAuthToken()
@@ -166,61 +203,69 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
     }
   }, [])
 
-  // 포스트 데이터 로딩
+  // 내 신청 목록 가져오기
   useEffect(() => {
-    const fetchPost = async () => {
-      if (!postId || !isOpen) return
+    if (isLoggedIn && isOpen) {
+      fetchMyApplications()
+    }
+  }, [isLoggedIn, isOpen, postId])
 
-      try {
-        setLoading(true)
-        setError("")
-        
-        let response
-        const token = getAuthToken()
-        
-        // 로그인한 사용자는 인증된 요청, 비로그인은 게스트 요청
-        if (token) {
-          try {
-            response = await makeAuthenticatedRequest(`${API_BASE_URL}/posts/${postId}`)
-          } catch (authError) {
-            // 인증 실패 시 게스트 요청으로 대체
-            response = await makeGuestRequest(`${API_BASE_URL}/posts/${postId}`)
-          }
-        } else {
+  // 포스트 데이터 가져오기 함수
+  const fetchPostData = async () => {
+    if (!postId) return
+
+    try {
+      setLoading(true)
+      setError("")
+      
+      let response
+      const token = getAuthToken()
+      
+      // 로그인한 사용자는 인증된 요청, 비로그인은 게스트 요청
+      if (token) {
+        try {
+          response = await makeAuthenticatedRequest(`${API_BASE_URL}/posts/${postId}`)
+        } catch (authError) {
+          // 인증 실패 시 게스트 요청으로 대체
           response = await makeGuestRequest(`${API_BASE_URL}/posts/${postId}`)
         }
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        
-        const data = await response.json()
-        
-        if (data && data.code === "POST201" && data.data) {
-          setPost(data.data)
-          
-          if (isLoggedIn) {
-            setIsFavorited(data.data.bookmarked || false)
-            
-            // 작성자 확인 - JWT 이메일과 모집글 작성자 이메일 비교
-            const userEmail = getEmailFromToken()
-            if (userEmail && data.data.userEmail) {
-              setIsAuthor(userEmail === data.data.userEmail)
-            }
-          }
-        } else {
-          throw new Error("게시글을 찾을 수 없습니다.")
-        }
-      } catch (error) {
-        console.error("API 호출 실패:", error)
-        setError("게시글을 불러오는데 실패했습니다.")
-      } finally {
-        setLoading(false)
+      } else {
+        response = await makeGuestRequest(`${API_BASE_URL}/posts/${postId}`)
       }
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      
+      if (data && data.code === "POST201" && data.data) {
+        setPost(data.data)
+        
+        if (isLoggedIn) {
+          setIsFavorited(data.data.bookmarked || false)
+          
+          // 작성자 확인 - JWT 이메일과 모집글 작성자 이메일 비교
+          const userEmail = getEmailFromToken()
+          if (userEmail && data.data.userEmail) {
+            setIsAuthor(userEmail === data.data.userEmail)
+          }
+        }
+      } else {
+        throw new Error("게시글을 찾을 수 없습니다.")
+      }
+    } catch (error) {
+      console.error("API 호출 실패:", error)
+      setError("게시글을 불러오는데 실패했습니다.")
+    } finally {
+      setLoading(false)
     }
+  }
 
+  // 포스트 데이터 로딩
+  useEffect(() => {
     if (isOpen && postId) {
-      fetchPost()
+      fetchPostData()
     }
   }, [postId, isOpen, isLoggedIn])
 
@@ -228,6 +273,9 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
     setPost(null)
     setError("")
     setToasts([])
+    setMyApplications([])
+    setCurrentApplication(null)
+    setIsJoined(false)
     onClose()
   }
 
@@ -345,6 +393,12 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
         
         setIsJoined(true)
         addToast(data.message || '참가 신청이 완료되었습니다!', 'success')
+        
+        // 신청 후 내 신청 목록 다시 가져오기
+        await fetchMyApplications()
+        
+        // 게시글 정보 다시 가져오기 (인원수 변경 반영)
+        await fetchPostData()
       } else {
         let errorData = null
         const contentType = response.headers.get('content-type')
@@ -388,6 +442,86 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
         if (onLogin) onLogin()
       } else {
         const errorMessage = error instanceof Error ? error.message : '참가 신청에 실패했습니다.'
+        addToast(errorMessage, 'error')
+      }
+    }
+  }
+
+  const handleCancelApplication = async () => {
+    if (!isLoggedIn) {
+      handleClose()
+      if (onLogin) onLogin()
+      return
+    }
+
+    const token = getAuthToken()
+    if (!token) {
+      handleClose()
+      if (onLogin) onLogin()
+      return
+    }
+
+    try {
+      const response = await makeAuthenticatedRequest(`${API_BASE_URL}/posts/${postId}/apply`, {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        let data = null
+        const contentType = response.headers.get('content-type')
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            data = await response.json()
+          } catch (jsonError) {
+            data = { message: '참가 신청이 취소되었습니다!' }
+          }
+        } else {
+          data = { message: '참가 신청이 취소되었습니다!' }
+        }
+        
+        setIsJoined(false)
+        setCurrentApplication(null)
+        addToast(data.message || '참가 신청이 취소되었습니다!', 'success')
+        
+        // 취소 후 내 신청 목록 다시 가져오기
+        await fetchMyApplications()
+        
+        // 게시글 정보 다시 가져오기
+        await fetchPostData()
+      } else {
+        let errorData = null
+        const contentType = response.headers.get('content-type')
+        
+        try {
+          if (contentType && contentType.includes('application/json')) {
+            errorData = await response.json()
+          } else {
+            const textResponse = await response.text()
+            errorData = { message: textResponse || '요청 처리 중 오류가 발생했습니다.' }
+          }
+        } catch (parseError) {
+          errorData = { message: '요청 처리 중 오류가 발생했습니다.' }
+        }
+        
+        if (response.status === 400 && errorData?.code === "PARTICIPATION400") {
+          addToast(errorData.message, 'error')
+        } else if (response.status === 401) {
+          handleClose()
+          if (onLogin) onLogin()
+        } else {
+          const errorMessage = (errorData?.message && errorData.message !== '요청 처리 중 오류가 발생했습니다.') 
+            ? errorData.message 
+            : '참가 신청 취소에 실패했습니다.'
+          addToast(errorMessage, 'error')
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('인증')) {
+        handleClose()
+        if (onLogin) onLogin()
+      } else {
+        const errorMessage = error instanceof Error ? error.message : '참가 신청 취소에 실패했습니다.'
         addToast(errorMessage, 'error')
       }
     }
@@ -465,6 +599,24 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
     return colorMap[status] || 'bg-gray-500'
   }
 
+  const getApplicationStatusText = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'PENDING': '승인 대기',
+      'APPROVED': '승인됨',
+      'REJECTED': '거절됨'
+    }
+    return statusMap[status] || status
+  }
+
+  const getApplicationStatusColor = (status: string) => {
+    const colorMap: { [key: string]: string } = {
+      'PENDING': 'bg-yellow-500',
+      'APPROVED': 'bg-green-500',
+      'REJECTED': 'bg-red-500'
+    }
+    return colorMap[status] || 'bg-gray-500'
+  }
+
   if (!isOpen) return null
 
   return (
@@ -493,12 +645,6 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                 <span className="font-bold text-gray-900">MatchFit</span>
               </div>
               <div className="flex items-center gap-2">
-                {/* <button
-                  onClick={handleShare}
-                  className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                >
-                  <Share2 className="w-5 h-5 text-gray-600" />
-                </button> */}
                 <button
                   onClick={toggleFavorite}
                   className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
@@ -541,7 +687,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                 {/* 메인 섹션 */}
                 <section className="relative px-6 py-12 bg-gradient-to-br from-gray-50 to-white">
                   <div className="max-w-4xl mx-auto">
-                    <div className="flex items-center gap-3 mb-6">
+                    <div className="flex items-center gap-3 mb-6 flex-wrap">
                       <Badge className={`${getStatusColor(post.status)} text-white px-4 py-2 rounded-full font-semibold`}>
                         {getStatusText(post.status)}
                       </Badge>
@@ -551,6 +697,11 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                       {isLoggedIn && isAuthor && (
                         <Badge className="bg-purple-500 text-white px-4 py-2 rounded-full font-semibold">
                           내 모집글
+                        </Badge>
+                      )}
+                      {isLoggedIn && currentApplication && (
+                        <Badge className={`${getApplicationStatusColor(currentApplication.status)} text-white px-4 py-2 rounded-full font-semibold`}>
+                          {getApplicationStatusText(currentApplication.status)}
                         </Badge>
                       )}
                     </div>
@@ -747,24 +898,34 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                       </h2>
                       
                       <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                        <button
-                          onClick={handleJoinEvent}
-                          disabled={post.status !== 'OPEN' || isJoined}
-                          className={`px-12 py-3 rounded-2xl font-bold text-lg transition-all duration-300 ${
-                            post.status === 'OPEN' && !isJoined
-                              ? 'bg-white text-black hover:bg-gray-100 hover:scale-105 shadow-lg'
-                              : 'bg-gray-600 text-gray-300 cursor-not-allowed'
-                          }`}
-                        >
-                          {!isLoggedIn 
-                            ? '로그인 후 참가신청' 
-                            : isJoined 
-                              ? '신청 완료' 
-                              : post.status === 'OPEN' 
-                                ? '참가 신청하기' 
-                                : '모집 마감'
-                          }
-                        </button>
+                        {/* 신청 버튼 - 신청 상태에 따라 다른 버튼 표시 */}
+                        {isLoggedIn && currentApplication ? (
+                          <button
+                            onClick={handleCancelApplication}
+                            className="px-12 py-3 rounded-2xl font-bold text-lg transition-all duration-300 bg-red-500 text-white hover:bg-red-600 hover:scale-105 shadow-lg"
+                          >
+                            참가신청 취소하기
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleJoinEvent}
+                            disabled={post.status !== 'OPEN' || isJoined}
+                            className={`px-12 py-3 rounded-2xl font-bold text-lg transition-all duration-300 ${
+                              post.status === 'OPEN' && !isJoined
+                                ? 'bg-white text-black hover:bg-gray-100 hover:scale-105 shadow-lg'
+                                : 'bg-gray-600 text-gray-300 cursor-not-allowed'
+                            }`}
+                          >
+                            {!isLoggedIn 
+                              ? '로그인 후 참가신청' 
+                              : isJoined 
+                                ? '신청 완료' 
+                                : post.status === 'OPEN' 
+                                  ? '참가 신청하기' 
+                                  : '모집 마감'
+                            }
+                          </button>
+                        )}
                         
                         <button
                           onClick={toggleFavorite}
