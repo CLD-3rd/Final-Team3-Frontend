@@ -87,7 +87,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
   // 인증 토큰 가져오기 및 API 호출 함수
   const getAuthToken = () => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem("auth_token") || localStorage.getItem("accessToken")
+      return sessionStorage.getItem("auth_token") || sessionStorage.getItem("accessToken")
     }
     return null
   }
