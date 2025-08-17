@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { Search, MapPin, Clock, Users, Bell, User, Heart, Calendar, List, ChevronDown, Plus, Filter, ArrowRight, Play, Star, Trophy, Target } from "lucide-react"
+import { Search, MapPin, Clock, Users, Bell, User, Heart, Calendar, List, ChevronDown, Plus, Filter, ArrowRight, Play, Star, Trophy, Target, Eye } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import CalendarView from "@/components/calendar-view"
@@ -32,7 +32,6 @@ const genderMap = {
   "여자": "FEMALE",
 };
 
-
 function formatTimeToKorean12Hour(dateString: string) {
   if (!dateString) return "";
   let fixedDateString = dateString.replace(" ", "T");
@@ -55,11 +54,11 @@ function extractMainRegion(town: string): string | undefined {
   return regions.find(region => town.startsWith(region));
 }
 
-const getAuthToken = () => localStorage.getItem("auth_token");
+const getAuthToken = () => sessionStorage.getItem("auth_token");
 
 export default function MainPage() {
   const router = useRouter();
-  const [sortType, setSortType] = useState("DATE")
+  const [sortBy, setSortBy] = useState("recent")
   const [selectedSport, setSelectedSport] = useState("전체")
   const [searchQuery, setSearchQuery] = useState("")
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
@@ -76,12 +75,10 @@ export default function MainPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  // pagination states (추가)
-  const [page, setPage] = useState<number>(0)
-  const [size] = useState<number>(10) // 기본 10개
-  const [totalElements, setTotalElements] = useState<number>(0); // 총 게시물 수
-  const [totalPages, setTotalPages] = useState<number>(1);       // 총 페이지 수
-    
+  
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+  
   const handleCreatePost = () => {
     const token = getAuthToken();
     if (!token) {
@@ -89,6 +86,12 @@ export default function MainPage() {
       return;
     }
     router.push('/create-post');
+  };
+
+
+  const handleRefresh = async () => {
+    await fetchPosts();
+    await fetchFavorites();
   };
 
   useEffect(() => {
@@ -114,13 +117,8 @@ export default function MainPage() {
   }, []);
 
   useEffect(() => {
-  apiClient.getPosts()
-    .then(response => setPosts(response.posts))  // posts 배열만 setPosts에 전달
-    .catch(error => {
-      console.error(error);
-      setPosts([]);
-    });
-}, []);
+    apiClient.getPosts().then(setPosts);
+  }, []);
 
   useEffect(() => {
     const fetchMyFollows = async () => {
@@ -137,12 +135,7 @@ export default function MainPage() {
   useEffect(() => {
     fetchPosts()
     fetchFavorites()
-  }, [selectedSport, sortType, searchQuery, selectedRegion, selectedGender, selectedDate, page])
-
-  useEffect(() => {
-    setPage(0) // <-- 추가: 필터/정렬 바뀌면 1페이지로
-  }, [selectedSport, sortType, searchQuery, selectedRegion, selectedGender, selectedDate])
-
+  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate])
 
   const fetchPosts = async () => {
     try {
@@ -150,28 +143,13 @@ export default function MainPage() {
       setError("")
       const params = {
         sports: selectedSport !== "전체" ? selectedSport : undefined,
-        sortType: sortType,
+        sortBy,
         search: searchQuery || undefined,
         gender: genderMap[selectedGender as keyof typeof genderMap],
         date: selectedDate || undefined,
-        page,
-        size,
       }
-      const res = await apiClient.getPosts(params);
-      console.log('API response:', res);
-      // 서버가 { posts, page, size, totalElements, totalPages } 형태로 응답하면 posts 추출
-      if (res && typeof res === "object" && Array.isArray((res as any).posts)) {
-        setPosts((res).posts);
-        // setPage(res.page);
-        setTotalElements(res.totalElements);
-        setTotalPages(res.totalPages);
-        // (옵션) 서버 페이지 정보를 사용하려면 setPage((res as any).page || 0) 등으로 처리
-      } else if (Array.isArray(res)) {
-        // 기존 방식: 배열 바로 사용
-        setPosts(res);
-      } else {
-        setPosts([]);
-      }
+      const posts = await apiClient.getPosts(params);  
+      setPosts(posts);
     } catch (error) {
       console.error("Failed to fetch posts:", error)
       setError("게시글을 불러오는데 실패했습니다.")
@@ -180,12 +158,6 @@ export default function MainPage() {
       setLoading(false)
     }
   }
-
-  const handlePageChange = (newPage: number) => {
-  if (newPage >= 0 && newPage < totalPages) {
-    setPage(newPage);
-  }
-};
 
   useEffect(() => {
     console.log(posts);
@@ -228,41 +200,43 @@ export default function MainPage() {
 
   const now = new Date();
   const myMainRegion = extractMainRegion(myRegion);
+  // tempRegion이 selectedRegion으로
+  const filteredPosts = posts.filter(post => {
+    // 1. 지역 필터
+    const regionMatch = selectedRegion === "모든 지역"
+      ? true
+      : selectedRegion === "내 지역"
+        ? extractMainRegion(post.town) === myMainRegion
+        : post.town === selectedRegion;
 
-  // NEW: 보정 - 필터 변경 등으로 현재 page가 초과하면 마지막 페이지로 이동
-  useEffect(() => {
-    if (page >= totalPages) {
-      setPage(Math.max(0, totalPages - 1));
+    if (!regionMatch) return false;
+
+    // 2. 현재 시각 이후 모집글만 (항상 적용)
+    if (post.date) {
+      const postDateTime = new Date(post.date.replace(" ", "T"));
+      // 현재 시각 이후만 남김
+      if (postDateTime <= now) return false;
     }
-    
-  }, [totalPages, page]);
 
-  // NEW: 현재 페이지에 해당하는 slice
-  const fromIndex = page * size;
-  const toIndex = Math.min(fromIndex + size, totalElements);
-  // const pagedPosts = sortedPosts.slice(fromIndex, toIndex);
-  const pagedPosts = posts;
-
-  
-  console.log('Current page:', page);
-  console.log('fromIndex, toIndex:', fromIndex, toIndex);
-  console.log('pagedPosts:', pagedPosts);
-
-  // NEW: 페이지 번호 창(최대 5개) 계산 헬퍼
-  const getPageRange = (current: number, last: number, maxShown = 5) => {
-    const half = Math.floor(maxShown / 2);
-    let start = Math.max(0, current - half);
-    let end = Math.min(last - 1, start + maxShown - 1);
-    if (end - start + 1 < maxShown) {
-      start = Math.max(0, end - maxShown + 1);
+    // 3. 특정 날짜가 선택된 경우 해당 날짜만 필터링
+    if (selectedDate) {
+      const postDateStr = post.date?.split("T")[0];
+      if (postDateStr !== selectedDate) return false;
     }
-    const range: number[] = [];
-    for (let i = start; i <= end; i++) range.push(i);
-    return range;
-  }
-  const pageRange = getPageRange(page, totalPages, 5);
-  
 
+    // selectedDate가 없으면 모두 통과
+    return true;
+  });
+
+  const sortedPosts = (() => {
+    if (sortBy === "popular") {
+      return [...filteredPosts].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+    }
+    if (sortBy === "recent") {
+      return [...filteredPosts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+    return filteredPosts;
+  })();
 
   return (
     <div className="min-h-screen bg-white">
@@ -403,8 +377,6 @@ export default function MainPage() {
           </button>
         </div>
       </section>
-
-      
 
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6">
@@ -581,7 +553,7 @@ export default function MainPage() {
                     {selectedDate ? `${selectedDate} 모집글` : "모집글 목록"}
                   </h3>
                   <p className="text-gray-500 mt-1">
-                    총 {posts.length}개의 모집글
+                    총 {filteredPosts.length}개의 모집글
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -597,9 +569,19 @@ export default function MainPage() {
                     </button>
                   )}
                   <button
-                    onClick={() => setSortType("POPULAR")}
+                    onClick={handleRefresh}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    {loading ? "로딩중..." : ""}
+                  </button>
+                  <button
+                    onClick={() => setSortBy("popular")}
                     className={`px-4 py-2 rounded-xl font-medium transition-colors ${
-                      sortType === "POPULAR" 
+                      sortBy === "popular" 
                         ? "bg-gray-900 text-white" 
                         : "text-gray-600 hover:bg-gray-100"
                     }`}
@@ -607,9 +589,9 @@ export default function MainPage() {
                     인기순
                   </button>
                   <button
-                    onClick={() => setSortType("DATE")}
+                    onClick={() => setSortBy("nearest")}
                     className={`px-4 py-2 rounded-xl font-medium transition-colors ${
-                      sortType === "DATE" 
+                      sortBy === "nearest" 
                         ? "bg-gray-900 text-white" 
                         : "text-gray-600 hover:bg-gray-100"
                     }`}
@@ -641,7 +623,7 @@ export default function MainPage() {
                 </div>
               )}
 
-              {!loading && !error && posts.length === 0 && (
+              {!loading && !error && filteredPosts.length === 0 && (
                 <div className="text-center py-16">
                   <div className="w-24 h-24 bg-gray-50 rounded-2xl mx-auto mb-8 flex items-center justify-center">
                     <Users className="w-12 h-12 text-gray-400" />
@@ -659,156 +641,148 @@ export default function MainPage() {
                 </div>
               )}
 
-              {!loading && !error && posts.length > 0 && (
-                <>
-                  <div className="grid gap-8 lg:grid-cols-2">
-                    {pagedPosts.map((post) => (
-                      <Card key={post.id} className="group bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden">
-                        <CardContent className="p-8">
-                          <div className="flex justify-between items-start mb-6">
-                            <div className="flex items-center gap-3">
-                              <Badge className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full font-semibold">
-                                {post.sports}
-                              </Badge>
-                              <Badge
-                                className={`px-4 py-2 rounded-full font-semibold ${
-                                  post.status === "모집중" 
-                                    ? "bg-green-100 text-green-700" 
-                                    : "bg-red-100 text-red-700"
-                                }`}
-                              >
-                                {post.status}
-                              </Badge>
-                            </div>
-                            <button 
-                              onClick={() => toggleFavorite(post.id)} 
-                              className="p-3 hover:bg-gray-100 rounded-xl transition-colors"
+              {!loading && !error && filteredPosts.length > 0 && (
+                <div className="grid gap-8 lg:grid-cols-2">
+                  {sortedPosts.map((post) => (
+                    <Card key={post.id} className="group bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+                      <CardContent className="p-8">
+                        <div className="flex justify-between items-start mb-6">
+                          <div className="flex items-center gap-3">
+                            <Badge className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full font-semibold">
+                              {post.sports}
+                            </Badge>
+                            <Badge
+                              className={`px-4 py-2 rounded-full font-semibold ${
+                                post.status === "모집중" 
+                                  ? "bg-green-100 text-green-700" 
+                                  : "bg-red-100 text-red-700"
+                              }`}
                             >
-                              <Heart
-                                className={`w-6 h-6 ${
-                                  favorites.includes(Number(post.id)) 
-                                    ? "fill-red-500 text-red-500" 
-                                    : "text-gray-400 hover:text-red-400"
-                                }`}
-                              />
+                              {post.status}
+                            </Badge>
+                            {(post.viewCount ?? 0) > 0 && (
+                              <div className="flex items-center gap-1 px-4 py-2 bg-orange-50 rounded-full">
+                                <Eye className="w-4 h-4 text-orange-500" />
+                                <span className="text-sm font-medium text-orange-600">
+                                  {post.viewCount}명 조회중
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <button 
+                            onClick={() => toggleFavorite(post.id)} 
+                            className="p-3 hover:bg-gray-100 rounded-xl transition-colors"
+                          >
+                            <Heart
+                              className={`w-6 h-6 ${
+                                favorites.includes(Number(post.id)) 
+                                  ? "fill-red-500 text-red-500" 
+                                  : "text-gray-400 hover:text-red-400"
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        <h4 className="font-bold text-gray-900 mb-6 text-xl group-hover:text-gray-700 transition-colors">
+                          {post.title}
+                        </h4>
+
+                        <div className="space-y-4 mb-8">
+                          <div className="flex items-center gap-4 text-gray-600">
+                            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                              <MapPin className="w-5 h-5 text-red-600" />
+                            </div>
+                            <span className="font-medium">{post.town}</span>
+                          </div>
+                          <div className="flex items-center gap-4 text-gray-600">
+                            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                              <Clock className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <span className="font-medium">
+                              {post.date?.split("T")[0]} {post.date && formatTimeToKorean12Hour(post.date)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 text-gray-600">
+                            <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                              <Users className="w-5 h-5 text-green-600" />
+                            </div>
+                            <span className="font-medium">
+                              {post.currentPeople}/{post.maxPeople}명 참여
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="flex -space-x-2">
+                              {post.participants?.slice(0, 3).map((participant, idx) => (
+                                <div
+                                  key={participant.id || idx}
+                                  className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full border-3 border-white flex items-center justify-center text-sm text-white font-semibold shadow-lg"
+                                >
+                                  {participant.nickName?.charAt(0) || "?"}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="text-right flex items-center gap-6">
+                            <div>
+                              <p className="text-sm text-gray-500 font-medium mb-1">참가비</p>
+                              <p className="text-2xl font-bold text-gray-900">
+                                {post.cost === 0 || post.cost === undefined
+                                  ? "무료"
+                                  : `${Number(post.cost).toLocaleString()}원`}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setSelectedPostId(post.id)
+                                setModalOpen(true)
+                              }}
+                              className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors font-semibold group-hover:scale-105"
+                            >
+                              상세보기
+                              <ArrowRight className="w-4 h-4" />
                             </button>
                           </div>
-
-                          <h4 className="font-bold text-gray-900 mb-6 text-xl group-hover:text-gray-700 transition-colors">
-                            {post.title}
-                          </h4>
-
-                          <div className="space-y-4 mb-8">
-                            <div className="flex items-center gap-4 text-gray-600">
-                              <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-                                <MapPin className="w-5 h-5 text-red-600" />
-                              </div>
-                              <span className="font-medium">{post.town}</span>
-                            </div>
-                            <div className="flex items-center gap-4 text-gray-600">
-                              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                                <Clock className="w-5 h-5 text-blue-600" />
-                              </div>
-                              <span className="font-medium">
-                                {post.date?.split("T")[0]} {post.date && formatTimeToKorean12Hour(post.date)}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-4 text-gray-600">
-                              <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
-                                <Users className="w-5 h-5 text-green-600" />
-                              </div>
-                              <span className="font-medium">
-                                {post.currentPeople}/{post.maxPeople}명 참여
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <div className="flex -space-x-2">
-                                {post.participants?.slice(0, 3).map((participant, idx) => (
-                                  <div
-                                    key={participant.id || idx}
-                                    className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full border-3 border-white flex items-center justify-center text-sm text-white font-semibold shadow-lg"
-                                  >
-                                    {participant.nickName?.charAt(0) || "?"}
-                                  </div>
-                                ))}
-                                {post.currentPeople > 3 && (
-                                  <div className="w-10 h-10 bg-gray-500 rounded-full border-3 border-white flex items-center justify-center text-sm text-white font-semibold shadow-lg">
-                                    +{post.currentPeople - 3}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="text-right flex items-center gap-6">
-                              <div>
-                                <p className="text-sm text-gray-500 font-medium mb-1">참가비</p>
-                                <p className="text-2xl font-bold text-gray-900">
-                                  {post.cost === 0 || post.cost === undefined
-                                    ? "무료"
-                                    : `${Number(post.cost).toLocaleString()}원`}
-                                </p>
-                              </div>
-                              <Link href={`/post/${post.id}`}>
-                                <button className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors font-semibold group-hover:scale-105">
-                                  상세보기
-                                  <ArrowRight className="w-4 h-4" />
-                                </button>
-                              </Link>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-
-                  {/* ---------- Pagination controls ---------- */}
-                  <div className="mt-10 flex items-center justify-center gap-3">
-                    <button
-                      onClick={() => setPage((p) => Math.max(0, p - 1))}
-                      disabled={page === 0}
-                      className={`px-4 py-2 rounded-lg ${page === 0 ? "bg-gray-100 text-gray-400" : "bg-white border border-gray-200 hover:bg-gray-50"}`}
-                      aria-label="Previous page"
-                    >
-                      이전
-                    </button>
-
-                    {pageRange.map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => setPage(p)}
-            
-                        className={`px-4 py-2 rounded-lg ${p === page ? "bg-black text-white" : "bg-white border border-gray-200 hover:bg-gray-50"}`}
-                        aria-current={p === page ? "page" : undefined}
-                      >
-                        {p + 1}
-                      </button>
-                    ))}
-
-                    <button
-                      onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                      disabled={page >= totalPages - 1}
-                      className={`px-4 py-2 rounded-lg ${page >= totalPages - 1 ? "bg-gray-100 text-gray-400" : "bg-white border border-gray-200 hover:bg-gray-50"}`}
-                      aria-label="Next page"
-                    >
-                      다음
-                    </button>
-                  </div>
-                  
-
-                  <p className="mt-4 text-center text-sm text-gray-500">
-                    총 {totalElements}건 · {page + 1}/{totalPages} 페이지
-                  </p>
-                  {/* ------------------------------------------ */}
-                </>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {modalOpen && selectedPostId !== null && (
+                    <EventDetailModal
+                      postId={selectedPostId}
+                      isOpen={modalOpen}
+                      onClose={() => {
+                        setModalOpen(false);
+                        setSelectedPostId(null);
+                        fetchPosts();
+                        fetchFavorites();
+                      }}
+                      onLogin={() => router.push('/login')} 
+                    />
+                  )}
+                </div>
               )}
             </>
           )}
         </div>
       </section>
 
-
+      <section className="py-24 bg-gradient-to-r from-gray-900 to-black text-white">
+        <div className="max-w-4xl mx-auto text-center px-6">
+          <h4 className="text-4xl md:text-5xl font-bold mb-8">
+            운동 메이트를 모집해보세요
+          </h4>
+          <button
+            onClick={handleCreatePost}
+            className="inline-flex items-center gap-3 bg-white text-black px-12 py-4 rounded-full text-xl font-bold hover:bg-gray-100 transition-all duration-300 hover:scale-105"
+          >
+            모집글 작성하기
+            <ArrowRight className="w-6 h-6" />
+          </button>
+        </div>
+      </section>
     </div>
   )
 }

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, MapPin, Clock, Users, RefreshCw } from "lucide-react"
+import { ArrowLeft, MapPin, Clock, Users, RefreshCw, CheckCircle, XCircle, X } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { API_BASE_URL } from "@/lib/api-client";
@@ -41,6 +41,29 @@ interface DisplayApplication {
   appliedDate: string
 }
 
+interface ToastMessage {
+  id: number
+  message: string
+  type: 'success' | 'error'
+}
+
+// 토스트 컴포넌트
+const Toast = ({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) => (
+  <div className={`fixed top-8 right-8 z-[60] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl transition-all transform animate-in slide-in-from-right-5 ${
+    type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+  }`}>
+    {type === 'success' ? (
+      <CheckCircle className="w-6 h-6" />
+    ) : (
+      <XCircle className="w-6 h-6" />
+    )}
+    <span className="font-semibold">{message}</span>
+    <button onClick={onClose} className="ml-2 text-white/80 hover:text-white transition-colors">
+      <span className="text-xl">×</span>
+    </button>
+  </div>
+)
+
 export default function ApplicationsPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("all")
@@ -50,29 +73,49 @@ export default function ApplicationsPage() {
   const [mounted, setMounted] = useState(false)
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+  const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const [cancelingPostId, setCancelingPostId] = useState<number | null>(null)
 
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null
     return sessionStorage.getItem('auth_token')
   }
 
-  const makeAuthenticatedRequest = async (url: string) => {
+  // 토스트 메시지 추가
+  const addToast = (message: string, type: 'success' | 'error') => {
+    const id = Date.now()
+    setToasts(prev => [...prev, { id, message, type }])
+    
+    setTimeout(() => {
+      setToasts(prev => prev.filter(toast => toast.id !== id))
+    }, 3000)
+  }
+
+  const removeToast = (id: number) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id))
+  }
+
+  const makeAuthenticatedRequest = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken()
     if (!token) throw new Error("인증 토큰이 없습니다.")
 
     const response = await fetch(url, {
+      ...options,
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
+        ...options.headers,
       },
     })
 
     if (response.status === 403) {
       await new Promise(resolve => setTimeout(resolve, 500))
       return fetch(url, {
+        ...options,
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          ...options.headers,
         },
       })
     }
@@ -118,6 +161,73 @@ export default function ApplicationsPage() {
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  // 참가신청 취소
+  const handleCancelApplication = async (postId: number, event: React.MouseEvent) => {
+    event.stopPropagation()
+
+    try {
+      setCancelingPostId(postId)
+
+      const response = await makeAuthenticatedRequest(`${API_BASE_URL}/posts/${postId}/apply`, {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        let data = null
+        const contentType = response.headers.get('content-type')
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            data = await response.json()
+          } catch (jsonError) {
+            data = { message: '참가 신청이 취소되었습니다!' }
+          }
+        } else {
+          data = { message: '참가 신청이 취소되었습니다!' }
+        }
+        
+        addToast(data.message || '참가 신청이 취소되었습니다!', 'success')
+        
+        // 취소 후 목록 다시 가져오기
+        await fetchApplications()
+      } else {
+        let errorData = null
+        const contentType = response.headers.get('content-type')
+        
+        try {
+          if (contentType && contentType.includes('application/json')) {
+            errorData = await response.json()
+          } else {
+            const textResponse = await response.text()
+            errorData = { message: textResponse || '요청 처리 중 오류가 발생했습니다.' }
+          }
+        } catch (parseError) {
+          errorData = { message: '요청 처리 중 오류가 발생했습니다.' }
+        }
+        
+        if (response.status === 400 && errorData?.code === "PARTICIPATION400") {
+          addToast(errorData.message, 'error')
+        } else if (response.status === 401) {
+          router.push('/login')
+        } else {
+          const errorMessage = (errorData?.message && errorData.message !== '요청 처리 중 오류가 발생했습니다.') 
+            ? errorData.message 
+            : '참가 신청 취소에 실패했습니다.'
+          addToast(errorMessage, 'error')
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('인증')) {
+        router.push('/login')
+      } else {
+        const errorMessage = error instanceof Error ? error.message : '참가 신청 취소에 실패했습니다.'
+        addToast(errorMessage, 'error')
+      }
+    } finally {
+      setCancelingPostId(null)
     }
   }
 
@@ -197,6 +307,16 @@ export default function ApplicationsPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* 토스트 메시지들 */}
+      {toasts.map((toast) => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => removeToast(toast.id)}
+        />
+      ))}
+
       {/* Header */}
       <div className="sticky top-0 bg-white z-10 px-5 py-4 border-b border-gray-100">
         <div className="flex items-center">
@@ -279,55 +399,71 @@ export default function ApplicationsPage() {
 
             <div className="space-y-4">
               {filteredApplications.map((application) => (
-                // <Link key={application.id} href={`/post/${application.id}`}>
-                  // 모달 추가 부분 283-290
-                  <Card 
-                    key={application.id}
-                      className="border border-gray-200 bg-white hover:shadow-md transition-all duration-200 active:scale-[0.98] cursor-pointer"
-                      onClick={() => {
-                        setSelectedPostId(application.id)
-                        setModalOpen(true)
-                      }}
-                    >
-                    <CardContent className="p-5">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex gap-2">
-                          <Badge className={`px-3 py-1 rounded-full text-xs font-medium ${getPostStatusColor(application.postStatus)}`}>
-                            {application.postStatus}
-                          </Badge>
-                        </div>
-                        <Badge className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(application.status)}`}>
-                          {application.status}
+                <Card 
+                  key={application.id}
+                  className="border border-gray-200 bg-white hover:shadow-md transition-all duration-200 active:scale-[0.98] cursor-pointer"
+                  onClick={() => {
+                    setSelectedPostId(application.id)
+                    setModalOpen(true)
+                  }}
+                >
+                  <CardContent className="p-5">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex gap-2">
+                        <Badge className={`px-3 py-1 rounded-full text-xs font-medium ${getPostStatusColor(application.postStatus)}`}>
+                          {application.postStatus}
                         </Badge>
                       </div>
+                      <Badge className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(application.status)}`}>
+                        {application.status}
+                      </Badge>
+                    </div>
 
-                      <h3 className="font-bold text-gray-900 text-lg mb-4 leading-tight">{application.title}</h3>
+                    <h3 className="font-bold text-gray-900 text-lg mb-4 leading-tight">{application.title}</h3>
 
-                      <div className="space-y-2.5 mb-5">
-                        <div className="flex items-center gap-3">
-                          <MapPin className="w-4 h-4 text-red-500" />
-                          <span className="text-gray-600 text-sm">{application.location}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Clock className="w-4 h-4 text-blue-500" />
-                          <span className="text-gray-600 text-sm">{application.time}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Users className="w-4 h-4 text-green-500" />
-                          <span className="text-gray-600 text-sm">{application.participants}</span>
-                        </div>
+                    <div className="space-y-2.5 mb-5">
+                      <div className="flex items-center gap-3">
+                        <MapPin className="w-4 h-4 text-red-500" />
+                        <span className="text-gray-600 text-sm">{application.location}</span>
                       </div>
-
-                      <div className="flex items-center justify-end pt-3 border-t border-gray-200">
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-red-500">{application.cost}</p>
-                        </div>
+                      <div className="flex items-center gap-3">
+                        <Clock className="w-4 h-4 text-blue-500" />
+                        <span className="text-gray-600 text-sm">{application.time}</span>
                       </div>
-                    </CardContent>
-                  </Card>
-                // </Link>
+                      <div className="flex items-center gap-3">
+                        <Users className="w-4 h-4 text-green-500" />
+                        <span className="text-gray-600 text-sm">{application.participants}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-red-500">{application.cost}</p>
+                      </div>
+                      
+                      {/* 신청취소 버튼 - 거절된 상태가 아닐 때만 표시 */}
+                      {application.status !== "거절" && (
+                        <Button
+                          onClick={(e) => handleCancelApplication(application.id, e)}
+                          disabled={cancelingPostId === application.id}
+                          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {cancelingPostId === application.id ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              취소 중...
+                            </div>
+                          ) : (
+                            '신청 취소'
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
-              {/* 모달 추가 부분 330-339 */}
+
+              {/* 모달 */}
               {modalOpen && selectedPostId !== null && (
                 <EventDetailModal
                   postId={selectedPostId}
@@ -335,6 +471,8 @@ export default function ApplicationsPage() {
                   onClose={() => {
                     setModalOpen(false);
                     setSelectedPostId(null);
+                    // 모달 닫힐 때 목록 새로고침
+                    fetchApplications();
                   }}
                 />
               )}

@@ -293,7 +293,7 @@ export default function EditPostModal({ isOpen, postId, onClose }: EditPostModal
   }
 
   // 인증 토큰 가져오기
-  const getAuthToken = () => localStorage.getItem("auth_token")
+  const getAuthToken = () => sessionStorage.getItem("auth_token")
 
   // JWT 토큰에서 이메일 추출
   const getEmailFromToken = () => {

@@ -241,7 +241,7 @@ export default function MyPage() {
           localStorage.removeItem('auth_token')
           sessionStorage.removeItem('auth_token')
         }
-        router.push("/login")
+        window.location.replace("/")
       } catch (error) {
         console.error("Logout error:", error)
       }
