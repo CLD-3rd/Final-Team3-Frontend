@@ -53,7 +53,7 @@ export default function ApplicationsPage() {
 
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null
-    return localStorage.getItem("auth_token") || localStorage.getItem("accessToken")
+    return sessionStorage.getItem('auth_token')
   }
 
   const makeAuthenticatedRequest = async (url: string) => {

@@ -16,9 +16,9 @@ class ApiClient {
 
   constructor(baseURL: string) {
     this.baseURL = baseURL
-    // 클라이언트 사이드에서만 localStorage 접근
+    // 클라이언트 사이드에서만 sessionStorage 접근
     if (typeof window !== "undefined") {
-      this.token = localStorage.getItem("auth_token")
+      this.token = sessionStorage.getItem("auth_token")
     }
   }
 
@@ -64,11 +64,35 @@ class ApiClient {
     if (response.code === "USER201" && response.data?.token) {
       this.token = response.data.token
       if (typeof window !== "undefined") {
-        localStorage.setItem("auth_token", response.data.token)
+        sessionStorage.setItem("auth_token", response.data.token)
       }
     }
     return response
   }
+
+  async findEmail(nickname: string): Promise<ApiResponse<{ email: string }>> {
+    return this.request<ApiResponse<{ email: string }>>("/user/find-email", {
+      method: "POST",
+      body: JSON.stringify({ nickname }),
+    })
+  }
+
+  // 비밀번호 재설정 요청 (메일 발송)
+  async requestPasswordReset(email: string) {
+    return this.request<{ message?: string; code?: string }>("/user/request-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    })
+  }
+
+  // 비밀번호 재설정 확정
+  async confirmPasswordReset(token: string, newPassword: string) {
+    return this.request<{ message?: string; code?: string }>("/user/confirm-password", {
+      method: "POST",
+      body: JSON.stringify({ token, newPassword }),
+    })
+  }
+
   
   async signup(data: SignupData): Promise<ApiResponse<{ user: User; token: string }>> {
     return this.request<ApiResponse<{ user: User; token: string }>>("/user/signup", {
@@ -86,7 +110,7 @@ class ApiClient {
     } finally {
       this.token = null
       if (typeof window !== "undefined") {
-        localStorage.removeItem("auth_token")
+        sessionStorage.removeItem("auth_token")
       }
     }
   }

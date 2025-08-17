@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { ArrowLeft, Share2, Heart, Users, Clock, MapPin, AlertTriangle, Bell, User, Eye, CheckCircle, XCircle, Shield, Zap, Trophy, Star, X } from "lucide-react"
+import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api-client";
 
 interface PostData {
@@ -67,6 +68,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
   const [isAuthor, setIsAuthor] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const router = useRouter();
 
   // 인증 토큰 가져오기 및 API 호출 함수
   const getAuthToken = () => {
@@ -746,7 +748,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                         지금 바로 참여하세요
                       </h2>
                       
-                      <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                      {/* <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                         <button
                           onClick={handleJoinEvent}
                           disabled={post.status !== 'OPEN' || isJoined}
@@ -782,7 +784,58 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                             }
                           </span>
                         </button>
-                      </div>
+                      </div> */}
+                      <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                      {/* 참가신청 버튼 */}
+                      <button
+                        onClick={() => {
+                          if (!isLoggedIn) {
+                            router.push("/login");
+                            return;
+                          }
+                          handleJoinEvent();
+                        }}
+                        disabled={post.status !== 'OPEN' || isJoined}
+                        className={`px-12 py-4 rounded-2xl font-bold text-lg w-56 transition-all duration-300 ${
+                          post.status === 'OPEN' && !isJoined
+                            ? 'bg-white text-black hover:bg-gray-100 hover:scale-105 shadow-lg'
+                            : 'bg-gray-600 text-gray-300 cursor-not-allowed'
+                        }`}
+                      >
+                        {!isLoggedIn 
+                          ? '로그인 후 참가신청' 
+                          : isJoined 
+                            ? '신청 완료' 
+                            : post.status === 'OPEN' 
+                              ? '참가 신청하기' 
+                              : '모집 마감'
+                        }
+                      </button>
+                      
+                      {/* 찜하기 버튼 */}
+                      <button
+                        onClick={() => {
+                          if (!isLoggedIn) {
+                            router.push("/login");
+                            return;
+                          }
+                          toggleFavorite();
+                        }}
+                        className="flex items-center justify-center gap-2 px-6 py-4 w-56 text-lg border border-white/30 text-white rounded-2xl hover:bg-white/10 transition-colors"
+                      >
+                        <Heart className={`w-5 h-5 ${
+                          isLoggedIn && isFavorited ? 'fill-red-400 text-red-400' : ''
+                        }`} />
+                        <span className="font-medium">
+                          {!isLoggedIn 
+                            ? '로그인 후 찜하기' 
+                            : isFavorited 
+                              ? '찜 완료' 
+                              : '찜하기'
+                          }
+                        </span>
+                      </button>
+                    </div>
                     </div>
                   </section>
                 )}

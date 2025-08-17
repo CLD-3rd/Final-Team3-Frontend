@@ -113,7 +113,7 @@ function MyPostsContentComponent() {
 
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null
-    return localStorage.getItem("auth_token") 
+    return sessionStorage.getItem('auth_token')
   }
 
   const addToast = (message: string, type: 'success' | 'error') => {
@@ -143,8 +143,8 @@ function MyPostsContentComponent() {
       })
 
       if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('auth_token')
-        localStorage.removeItem('accessToken')
+        sessionStorage.removeItem('auth_token')
+        sessionStorage.removeItem('accessToken')
         router.push('/login')
         throw new Error("인증이 만료되었습니다. 다시 로그인해주세요.")
       }
