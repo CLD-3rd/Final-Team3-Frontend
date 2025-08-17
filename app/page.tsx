@@ -75,6 +75,12 @@ export default function MainPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+
+  const [page, setPage] = useState<number>(0)
+  const [size] = useState<number>(10) // 기본 10개
+  const [totalElements, setTotalElements] = useState<number>(0); // 총 게시물 수
+  const [totalPages, setTotalPages] = useState<number>(1);       // 총 페이지 수
+  
   
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
@@ -117,8 +123,13 @@ export default function MainPage() {
   }, []);
 
   useEffect(() => {
-    apiClient.getPosts().then(setPosts);
-  }, []);
+    apiClient.getPosts()
+    .then(response => setPosts(response.posts))  // posts 배열만 setPosts에 전달
+    .catch(error => {
+      console.error(error);
+      setPosts([]);
+    });
+}, []);
 
   useEffect(() => {
     const fetchMyFollows = async () => {
@@ -135,8 +146,12 @@ export default function MainPage() {
   useEffect(() => {
     fetchPosts()
     fetchFavorites()
-  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate])
+  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate, page])
 
+  useEffect(() => {
+    setPage(0) // <-- 추가: 필터/정렬 바뀌면 1페이지로
+  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate])
+  
   const fetchPosts = async () => {
     try {
       setLoading(true)
@@ -147,9 +162,24 @@ export default function MainPage() {
         search: searchQuery || undefined,
         gender: genderMap[selectedGender as keyof typeof genderMap],
         date: selectedDate || undefined,
+        page,
+        size,
       }
-      const posts = await apiClient.getPosts(params);  
-      setPosts(posts);
+      const res = await apiClient.getPosts(params);
+      console.log('API response:', res);
+      // 서버가 { posts, page, size, totalElements, totalPages } 형태로 응답하면 posts 추출
+      if (res && typeof res === "object" && Array.isArray((res as any).posts)) {
+        setPosts((res).posts);
+        // setPage(res.page);
+        setTotalElements(res.totalElements);
+        setTotalPages(res.totalPages);
+        // (옵션) 서버 페이지 정보를 사용하려면 setPage((res as any).page || 0) 등으로 처리
+      } else if (Array.isArray(res)) {
+        // 기존 방식: 배열 바로 사용
+        setPosts(res);
+      } else {
+        setPosts([]);
+      }
     } catch (error) {
       console.error("Failed to fetch posts:", error)
       setError("게시글을 불러오는데 실패했습니다.")
@@ -158,6 +188,12 @@ export default function MainPage() {
       setLoading(false)
     }
   }
+
+  const handlePageChange = (newPage: number) => {
+  if (newPage >= 0 && newPage < totalPages) {
+    setPage(newPage);
+    }
+  };
 
   useEffect(() => {
     console.log(posts);
@@ -201,42 +237,74 @@ export default function MainPage() {
   const now = new Date();
   const myMainRegion = extractMainRegion(myRegion);
   // tempRegion이 selectedRegion으로
-  const filteredPosts = posts.filter(post => {
-    // 1. 지역 필터
-    const regionMatch = selectedRegion === "모든 지역"
-      ? true
-      : selectedRegion === "내 지역"
-        ? extractMainRegion(post.town) === myMainRegion
-        : post.town === selectedRegion;
+  // const filteredPosts = posts.filter(post => {
+  //   // 1. 지역 필터
+  //   const regionMatch = selectedRegion === "모든 지역"
+  //     ? true
+  //     : selectedRegion === "내 지역"
+  //       ? extractMainRegion(post.town) === myMainRegion
+  //       : post.town === selectedRegion;
 
-    if (!regionMatch) return false;
+  //   if (!regionMatch) return false;
 
-    // 2. 현재 시각 이후 모집글만 (항상 적용)
-    if (post.date) {
-      const postDateTime = new Date(post.date.replace(" ", "T"));
-      // 현재 시각 이후만 남김
-      if (postDateTime <= now) return false;
+  //   // 2. 현재 시각 이후 모집글만 (항상 적용)
+  //   if (post.date) {
+  //     const postDateTime = new Date(post.date.replace(" ", "T"));
+  //     // 현재 시각 이후만 남김
+  //     if (postDateTime <= now) return false;
+  //   }
+
+  //   // 3. 특정 날짜가 선택된 경우 해당 날짜만 필터링
+  //   if (selectedDate) {
+  //     const postDateStr = post.date?.split("T")[0];
+  //     if (postDateStr !== selectedDate) return false;
+  //   }
+
+  //   // selectedDate가 없으면 모두 통과
+  //   return true;
+  // });
+
+  // const sortedPosts = (() => {
+  //   if (sortBy === "popular") {
+  //     return [...filteredPosts].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+  //   }
+  //   if (sortBy === "recent") {
+  //     return [...filteredPosts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  //   }
+  //   return filteredPosts;
+  // })();
+
+    // NEW: 보정 - 필터 변경 등으로 현재 page가 초과하면 마지막 페이지로 이동
+  useEffect(() => {
+    if (page >= totalPages) {
+      setPage(Math.max(0, totalPages - 1));
     }
+    
+  }, [totalPages, page]);
 
-    // 3. 특정 날짜가 선택된 경우 해당 날짜만 필터링
-    if (selectedDate) {
-      const postDateStr = post.date?.split("T")[0];
-      if (postDateStr !== selectedDate) return false;
-    }
+  // NEW: 현재 페이지에 해당하는 slice
+  const fromIndex = page * size;
+  const toIndex = Math.min(fromIndex + size, totalElements);
+  // const pagedPosts = sortedPosts.slice(fromIndex, toIndex);
+  const pagedPosts = posts;
 
-    // selectedDate가 없으면 모두 통과
-    return true;
-  });
+  
 
-  const sortedPosts = (() => {
-    if (sortBy === "popular") {
-      return [...filteredPosts].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+
+  // NEW: 페이지 번호 창(최대 5개) 계산 헬퍼
+  const getPageRange = (current: number, last: number, maxShown = 5) => {
+    const half = Math.floor(maxShown / 2);
+    let start = Math.max(0, current - half);
+    let end = Math.min(last - 1, start + maxShown - 1);
+    if (end - start + 1 < maxShown) {
+      start = Math.max(0, end - maxShown + 1);
     }
-    if (sortBy === "recent") {
-      return [...filteredPosts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }
-    return filteredPosts;
-  })();
+    const range: number[] = [];
+    for (let i = start; i <= end; i++) range.push(i);
+    return range;
+  }
+  const pageRange = getPageRange(page, totalPages, 5);
+  
 
   return (
     <div className="min-h-screen bg-white">
@@ -553,7 +621,7 @@ export default function MainPage() {
                     {selectedDate ? `${selectedDate} 모집글` : "모집글 목록"}
                   </h3>
                   <p className="text-gray-500 mt-1">
-                    총 {filteredPosts.length}개의 모집글
+                    총 {posts.length}개의 모집글
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -623,7 +691,7 @@ export default function MainPage() {
                 </div>
               )}
 
-              {!loading && !error && filteredPosts.length === 0 && (
+              {!loading && !error && posts.length === 0 && (
                 <div className="text-center py-16">
                   <div className="w-24 h-24 bg-gray-50 rounded-2xl mx-auto mb-8 flex items-center justify-center">
                     <Users className="w-12 h-12 text-gray-400" />
@@ -641,9 +709,9 @@ export default function MainPage() {
                 </div>
               )}
 
-              {!loading && !error && filteredPosts.length > 0 && (
+              {!loading && !error && posts.length > 0 && (
                 <div className="grid gap-8 lg:grid-cols-2">
-                  {sortedPosts.map((post) => (
+                  {posts.map((post) => (
                     <Card key={post.id} className="group bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden">
                       <CardContent className="p-8">
                         <div className="flex justify-between items-start mb-6">
@@ -764,6 +832,45 @@ export default function MainPage() {
                   )}
                 </div>
               )}
+
+              {/* ---------- Pagination controls ---------- */}
+                  <div className="mt-10 flex items-center justify-center gap-3">
+                    <button
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      disabled={page === 0}
+                      className={`px-4 py-2 rounded-lg ${page === 0 ? "bg-gray-100 text-gray-400" : "bg-white border border-gray-200 hover:bg-gray-50"}`}
+                      aria-label="Previous page"
+                    >
+                      이전
+                    </button>
+
+                    {pageRange.map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+            
+                        className={`px-4 py-2 rounded-lg ${p === page ? "bg-black text-white" : "bg-white border border-gray-200 hover:bg-gray-50"}`}
+                        aria-current={p === page ? "page" : undefined}
+                      >
+                        {p + 1}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                      disabled={page >= totalPages - 1}
+                      className={`px-4 py-2 rounded-lg ${page >= totalPages - 1 ? "bg-gray-100 text-gray-400" : "bg-white border border-gray-200 hover:bg-gray-50"}`}
+                      aria-label="Next page"
+                    >
+                      다음
+                    </button>
+                  </div>
+                  
+
+                  <p className="mt-4 text-center text-sm text-gray-500">
+                    총 {totalElements}건 · {page + 1}/{totalPages} 페이지
+                  </p>
+                  {/* ------------------------------------------ */}
             </>
           )}
         </div>
