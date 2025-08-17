@@ -78,7 +78,13 @@ export default function MainPage() {
   
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
-  
+
+  // pagination states (추가)
+  const [page, setPage] = useState<number>(0)
+  const [size] = useState<number>(10) // 기본 10개
+  const [totalElements, setTotalElements] = useState<number>(0); // 총 게시물 수
+  const [totalPages, setTotalPages] = useState<number>(1);       // 총 페이지 수
+    
   const handleCreatePost = () => {
     const token = getAuthToken();
     if (!token) {
@@ -724,15 +730,26 @@ export default function MainPage() {
                                 </div>
                               ))}
                             </div>
-                          </div>
-                          <div className="text-right flex items-center gap-6">
-                            <div>
-                              <p className="text-sm text-gray-500 font-medium mb-1">참가비</p>
-                              <p className="text-2xl font-bold text-gray-900">
-                                {post.cost === 0 || post.cost === undefined
-                                  ? "무료"
-                                  : `${Number(post.cost).toLocaleString()}원`}
-                              </p>
+                            <div className="text-right flex items-center gap-6">
+                              <div>
+                                <p className="text-sm text-gray-500 font-medium mb-1">참가비</p>
+                                <p className="text-2xl font-bold text-gray-900">
+                                  {post.cost === 0 || post.cost === undefined
+                                    ? "무료"
+                                    : `${Number(post.cost).toLocaleString()}원`}
+                                </p>
+                              </div>
+
+                              <button
+                                onClick={() => {
+                                  setSelectedPostId(post.id);
+                                  setModalOpen(true);
+                                }}
+                                className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors font-semibold group-hover:scale-105"
+                              >
+                                상세보기
+                                <ArrowRight className="w-4 h-4" />
+                              </button>
                             </div>
                             <button
                               onClick={() => {
@@ -762,7 +779,48 @@ export default function MainPage() {
                       onLogin={() => router.push('/login')} 
                     />
                   )}
-                </div>
+
+                  </div>
+
+                  {/* ---------- Pagination controls ---------- */}
+                  <div className="mt-10 flex items-center justify-center gap-3">
+                    <button
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      disabled={page === 0}
+                      className={`px-4 py-2 rounded-lg ${page === 0 ? "bg-gray-100 text-gray-400" : "bg-white border border-gray-200 hover:bg-gray-50"}`}
+                      aria-label="Previous page"
+                    >
+                      이전
+                    </button>
+
+                    {pageRange.map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+            
+                        className={`px-4 py-2 rounded-lg ${p === page ? "bg-black text-white" : "bg-white border border-gray-200 hover:bg-gray-50"}`}
+                        aria-current={p === page ? "page" : undefined}
+                      >
+                        {p + 1}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                      disabled={page >= totalPages - 1}
+                      className={`px-4 py-2 rounded-lg ${page >= totalPages - 1 ? "bg-gray-100 text-gray-400" : "bg-white border border-gray-200 hover:bg-gray-50"}`}
+                      aria-label="Next page"
+                    >
+                      다음
+                    </button>
+                  </div>
+                  
+
+                  <p className="mt-4 text-center text-sm text-gray-500">
+                    총 {totalElements}건 · {page + 1}/{totalPages} 페이지
+                  </p>
+                  {/* ------------------------------------------ */}
+                </>
               )}
             </>
           )}
