@@ -900,12 +900,15 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                       <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                         {/* 신청 버튼 - 신청 상태에 따라 다른 버튼 표시 */}
                         {isLoggedIn && currentApplication ? (
-                          <button
-                            onClick={handleCancelApplication}
-                            className="px-12 py-3 rounded-2xl font-bold text-lg transition-all duration-300 bg-red-500 text-white hover:bg-red-600 hover:scale-105 shadow-lg"
-                          >
-                            참가신청 취소하기
-                          </button>
+                          currentApplication.status === "REJECTED" ? (
+                            <div className="px-12 py-3 rounded-2xl font-bold text-lg bg-gray-400 text-white cursor-not-allowed">
+                              참가 신청이 거절되었습니다
+                            </div>
+                          ) : (
+                            <button onClick={handleCancelApplication}>
+                              참가신청 취소하기
+                            </button>
+                          )
                         ) : (
                           <button
                             onClick={handleJoinEvent}
