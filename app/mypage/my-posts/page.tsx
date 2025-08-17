@@ -144,7 +144,7 @@ function MyPostsContentComponent() {
 
       if (response.status === 401 || response.status === 403) {
         sessionStorage.removeItem('auth_token')
-        sessionStorage.removeItem('accessToken')
+        localStorage.removeItem('accessToken')
         router.push('/login')
         throw new Error("인증이 만료되었습니다. 다시 로그인해주세요.")
       }

@@ -64,8 +64,8 @@ export default function LoginPage() {
     console.log('kakaoToken:', kakaoToken);
     if (kakaoToken) {
       // 토큰 저장
-      //sessionStorage.setItem("accessToken", kakaoToken)
-      localStorage.setItem("auth_token", kakaoToken)
+      sessionStorage.setItem("accessToken", kakaoToken)
+      //localStorage.setItem("auth_token", kakaoToken)
       // 메인페이지로 이동
       window.location.replace("/") // router.replace("/")도 가능, 그러나 확실히 새로고침할 땐 window.location 추천
     }
@@ -73,7 +73,7 @@ export default function LoginPage() {
 
 
   useEffect(() => {
-    const savedEmail = localStorage.getItem("rememberedEmail")
+    const savedEmail = sessionStorage.getItem("rememberedEmail")
     if (savedEmail) {
       setFormData((prev) => ({ ...prev, email: savedEmail }))
       setRememberEmail(true)
@@ -191,9 +191,9 @@ export default function LoginPage() {
                     setFormData((prev) => ({ ...prev, keepLoggedIn: keep }))
 
                     if (keep) {
-                      localStorage.setItem("rememberedEmail", formData.email)
+                      sessionStorage.setItem("rememberedEmail", formData.email)
                     } else {
-                      localStorage.removeItem("rememberedEmail")
+                      sessionStorage.removeItem("rememberedEmail")
                       setFormData((prev) => ({ ...prev, email: "" }))
                     }
                   }}
