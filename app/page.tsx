@@ -58,7 +58,7 @@ const getAuthToken = () => localStorage.getItem("auth_token");
 
 export default function MainPage() {
   const router = useRouter();
-  const [sortBy, setSortBy] = useState("recent")
+  const [sortType, setSortType] = useState("DATE")
   const [selectedSport, setSelectedSport] = useState("전체")
   const [searchQuery, setSearchQuery] = useState("")
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
@@ -141,7 +141,7 @@ export default function MainPage() {
   useEffect(() => {
     fetchPosts()
     fetchFavorites()
-  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate])
+  }, [selectedSport, sortType, searchQuery, selectedRegion, selectedGender, selectedDate])
 
   const fetchPosts = async () => {
     try {
@@ -149,7 +149,7 @@ export default function MainPage() {
       setError("")
       const params = {
         sports: selectedSport !== "전체" ? selectedSport : undefined,
-        sortBy,
+        sortType,
         search: searchQuery || undefined,
         gender: genderMap[selectedGender as keyof typeof genderMap],
         date: selectedDate || undefined,
@@ -235,10 +235,10 @@ export default function MainPage() {
   });
 
   const sortedPosts = (() => {
-    if (sortBy === "popular") {
+    if (sortType === "POPULAR") {
       return [...filteredPosts].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
     }
-    if (sortBy === "recent") {
+    if (sortType === "DATE") {
       return [...filteredPosts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }
     return filteredPosts;
@@ -585,9 +585,9 @@ export default function MainPage() {
                     {loading ? "로딩중..." : ""}
                   </button>
                   <button
-                    onClick={() => setSortBy("popular")}
+                    onClick={() => setSortType("POPULAR")}
                     className={`px-4 py-2 rounded-xl font-medium transition-colors ${
-                      sortBy === "popular" 
+                      sortType === "POPULAR" 
                         ? "bg-gray-900 text-white" 
                         : "text-gray-600 hover:bg-gray-100"
                     }`}
@@ -595,9 +595,9 @@ export default function MainPage() {
                     인기순
                   </button>
                   <button
-                    onClick={() => setSortBy("nearest")}
+                    onClick={() => setSortType("DATE")}
                     className={`px-4 py-2 rounded-xl font-medium transition-colors ${
-                      sortBy === "nearest" 
+                      sortType === "nearest" 
                         ? "bg-gray-900 text-white" 
                         : "text-gray-600 hover:bg-gray-100"
                     }`}
