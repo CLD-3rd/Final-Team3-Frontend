@@ -35,7 +35,7 @@ interface MyApplication {
   location: string
   cost: number
   status: "PENDING" | "APPROVED" | "REJECTED"
-  postStatus: "OPEN" | "CLOSED"
+  postStatus: "OPEN" | "CLOSED" | "EXPIRED"
 }
 
 interface ToastMessage {
@@ -587,7 +587,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
     const statusMap: { [key: string]: string } = {
       'OPEN': '모집중',
       'CLOSED': '모집마감',
-      'FULL': '정원마감'
+      'EXPIRED': '모집만료'
     }
     return statusMap[status] || status
   }
@@ -596,7 +596,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
     const colorMap: { [key: string]: string } = {
       'OPEN': 'bg-emerald-500',
       'CLOSED': 'bg-red-500',
-      'FULL': 'bg-orange-500'
+      'EXPIRED': 'bg-gray-500'
     }
     return colorMap[status] || 'bg-gray-500'
   }

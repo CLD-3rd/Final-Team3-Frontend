@@ -225,6 +225,7 @@ function MyPostsContentComponent() {
       case 'REJECTED': return '거절됨'
       case 'OPEN': return '모집중'
       case 'CLOSED': return '모집완료'
+      case 'EXPIRED': return '모집만료'
       default: return status
     }
   }
@@ -470,6 +471,8 @@ function MyPostsContentComponent() {
                     className={
                       post.status === "OPEN" 
                         ? "bg-green-500 text-white" 
+                        : post.status === "CLOSED"
+                        ? "bg-red-100 text-red-700"
                         : "bg-gray-500 text-white"
                     }
                   >
