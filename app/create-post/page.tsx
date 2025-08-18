@@ -367,6 +367,14 @@ export default function CreatePostPage() {
     setToasts(prev => prev.filter(toast => toast.id !== id))
   }
 
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+
+  // 로컬 시간 기준 "YYYY-MM-DD"
+  const getTodayStr = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+  };
+
   const handleParticipantChange = (increment: boolean) => {
     setFormData((prev) => ({
       ...prev,
@@ -417,6 +425,43 @@ export default function CreatePostPage() {
     setLoading(true)
     setError("")
     setSuccessMessage("")
+
+    let hasError = false
+    if (!formData.title) {
+      addToast("제목을 입력하세요.", "error")
+      hasError = true
+    }
+    if (!formData.sport) {
+      addToast("운동 종목을 선택하세요.", "error")
+      hasError = true
+    }
+    if (!formData.location) {
+      addToast("상세 위치를 입력하세요.", "error")
+      hasError = true
+    }
+    if (hasError) {
+      setLoading(false)
+      return
+    }
+
+    if (!formData.date || !formData.time) {
+      setLoading(false)
+      setError("날짜와 시간을 입력해 주세요.")
+      addToast("날짜와 시간을 입력해 주세요.", "error")
+      return
+    }
+
+    // "YYYY-MM-DDTHH:mm(:ss)" → 로컬 기준 Date
+    const timeStr = formData.time.length === 5 ? formData.time + ":00" : formData.time
+    const selected = new Date(`${formData.date}T${timeStr}`)
+    const now = new Date()
+    // '이후'만 허용 → 같거나 과거면 막기
+    if (selected <= now) {
+      setLoading(false)
+      setError("현재 시간 이후로 설정해야 됩니다.")
+      addToast("현재 시간 이후로 설정해야 됩니다.", "error")
+      return
+    }
 
     try {
       const isoDateTime = `${formData.date}T${formData.time}`
@@ -554,7 +599,6 @@ export default function CreatePostPage() {
                 value={formData.title}
                 onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
                 className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50"
-                required
               />
             </div>
 
@@ -601,7 +645,6 @@ export default function CreatePostPage() {
                     }
                   }}
                   className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50 pr-12"
-                  required
                 />
                 <MapPin className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 
@@ -657,7 +700,6 @@ export default function CreatePostPage() {
                   value={townOptions.find(opt => opt.value === formData.town)?.label || ""}
                   readOnly
                   className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-100 pr-14 cursor-not-allowed"
-                  required
                 />
 
               </div>
@@ -674,9 +716,23 @@ export default function CreatePostPage() {
                   <Input
                     type="date"
                     value={formData.date}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
+                    min={getTodayStr()}
+                    onChange={(e) => {
+                    const today = getTodayStr();
+                    const selected = e.target.value;
+
+                    // 오늘 이전이면 강제로 오늘로 맞추고 에러/토스트
+                    if (selected < today) {
+                      setError("오늘 이후 날짜만 선택 가능합니다.");
+                      addToast?.("오늘 이후 날짜만 선택 가능합니다.", "error");
+                      setFormData((prev) => ({ ...prev, date: today }));
+                      return;
+                    }  else {
+                      setError("");
+                      setFormData((prev) => ({ ...prev, date: selected })); 
+                    }
+                  }}
                     className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50"
-                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -686,7 +742,6 @@ export default function CreatePostPage() {
                     value={formData.time}
                     onChange={(e) => setFormData((prev) => ({ ...prev, time: e.target.value }))}
                     className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50"
-                    required
                   />
                 </div>
               </div>
@@ -745,13 +800,6 @@ export default function CreatePostPage() {
             <div className="space-y-3">
               <Label className="text-lg font-semibold text-gray-900">1인당 참가비</Label>
               <div className="relative">
-                {/* <Input
-                  type="number"
-                  placeholder="0"
-                  value={formData.cost}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, cost: e.target.value }))}
-                  className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50 pr-12"
-                /> */}
                 <Input
                   type="text"
                   inputMode="numeric"
