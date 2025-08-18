@@ -58,7 +58,7 @@ const getAuthToken = () => sessionStorage.getItem("auth_token");
 
 export default function MainPage() {
   const router = useRouter();
-  const [sortBy, setSortBy] = useState("recent")
+  const [sortType, setSortType] = useState("DATE")
   const [selectedSport, setSelectedSport] = useState("전체")
   const [searchQuery, setSearchQuery] = useState("")
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
@@ -146,11 +146,11 @@ export default function MainPage() {
   useEffect(() => {
     fetchPosts()
     fetchFavorites()
-  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate, page])
+  }, [selectedSport, sortType, searchQuery, selectedRegion, selectedGender, selectedDate, page])
 
   useEffect(() => {
     setPage(0) // <-- 추가: 필터/정렬 바뀌면 1페이지로
-  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate])
+  }, [selectedSport, sortType, searchQuery, selectedRegion, selectedGender, selectedDate])
   
   const fetchPosts = async () => {
     try {
@@ -158,7 +158,7 @@ export default function MainPage() {
       setError("")
       const params = {
         sports: selectedSport !== "전체" ? selectedSport : undefined,
-        sortBy,
+        sortType,
         search: searchQuery || undefined,
         gender: genderMap[selectedGender as keyof typeof genderMap],
         date: selectedDate || undefined,
@@ -237,32 +237,32 @@ export default function MainPage() {
   const now = new Date();
   const myMainRegion = extractMainRegion(myRegion);
   // tempRegion이 selectedRegion으로
-  // const filteredPosts = posts.filter(post => {
-  //   // 1. 지역 필터
-  //   const regionMatch = selectedRegion === "모든 지역"
-  //     ? true
-  //     : selectedRegion === "내 지역"
-  //       ? extractMainRegion(post.town) === myMainRegion
-  //       : post.town === selectedRegion;
+  const filteredPosts = posts.filter(post => {
+    // 1. 지역 필터
+    const regionMatch = selectedRegion === "모든 지역"
+      ? true
+      : selectedRegion === "내 지역"
+        ? extractMainRegion(post.town) === myMainRegion
+        : post.town === selectedRegion;
 
-  //   if (!regionMatch) return false;
+    if (!regionMatch) return false;
 
-  //   // 2. 현재 시각 이후 모집글만 (항상 적용)
-  //   if (post.date) {
-  //     const postDateTime = new Date(post.date.replace(" ", "T"));
-  //     // 현재 시각 이후만 남김
-  //     if (postDateTime <= now) return false;
-  //   }
+    // 2. 현재 시각 이후 모집글만 (항상 적용)
+    if (post.date) {
+      const postDateTime = new Date(post.date.replace(" ", "T"));
+      // 현재 시각 이후만 남김
+      if (postDateTime <= now) return false;
+    }
 
-  //   // 3. 특정 날짜가 선택된 경우 해당 날짜만 필터링
-  //   if (selectedDate) {
-  //     const postDateStr = post.date?.split("T")[0];
-  //     if (postDateStr !== selectedDate) return false;
-  //   }
+    // 3. 특정 날짜가 선택된 경우 해당 날짜만 필터링
+    if (selectedDate) {
+      const postDateStr = post.date?.split("T")[0];
+      if (postDateStr !== selectedDate) return false;
+    }
 
-  //   // selectedDate가 없으면 모두 통과
-  //   return true;
-  // });
+    // selectedDate가 없으면 모두 통과
+    return true;
+  });
 
   // const sortedPosts = (() => {
   //   if (sortBy === "popular") {
@@ -647,9 +647,9 @@ export default function MainPage() {
                     {loading ? "로딩중..." : ""}
                   </button>
                   <button
-                    onClick={() => setSortBy("popular")}
+                    onClick={() => setSortType("POPULAR")}
                     className={`px-4 py-2 rounded-xl font-medium transition-colors ${
-                      sortBy === "popular" 
+                      sortType === "POPULAR" 
                         ? "bg-gray-900 text-white" 
                         : "text-gray-600 hover:bg-gray-100"
                     }`}
@@ -657,9 +657,9 @@ export default function MainPage() {
                     인기순
                   </button>
                   <button
-                    onClick={() => setSortBy("nearest")}
+                    onClick={() => setSortType("DATE")}
                     className={`px-4 py-2 rounded-xl font-medium transition-colors ${
-                      sortBy === "nearest" 
+                      sortType === "DATE" 
                         ? "bg-gray-900 text-white" 
                         : "text-gray-600 hover:bg-gray-100"
                     }`}
@@ -721,9 +721,11 @@ export default function MainPage() {
                             </Badge>
                             <Badge
                               className={`px-4 py-2 rounded-full font-semibold ${
-                                post.status === "모집중" 
-                                  ? "bg-green-100 text-green-700" 
-                                  : "bg-red-100 text-red-700"
+                                post.status === "모집중"
+                                  ? "bg-green-100 text-green-700"
+                                  : post.status === "모집완료"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-gray-500 text-white" // 만료일 경우
                               }`}
                             >
                               {post.status}
