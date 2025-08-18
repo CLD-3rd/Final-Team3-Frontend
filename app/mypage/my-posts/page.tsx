@@ -387,6 +387,34 @@ function MyPostsContentComponent() {
     }
   }
 
+  const handleDelete = async (postId: number) => {
+    const confirmed = confirm('정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')
+    if (!confirmed) return
+
+    // 상태 백업 (실패 시 롤백용)
+    const prev = myPosts
+    setMyPosts((p) => (p ? p.filter((x) => x.postId !== postId) : p))
+
+    console.log("모집글 아이디는" + postId);
+
+    try {
+      const response = await makeAuthenticatedRequest(`${API_BASE_URL}/posts/${postId}`, { method: 'DELETE', credentials: 'include' })
+      if (!response.ok) {
+        const text = await response.text()
+        throw new Error(text || '삭제 실패')
+      }
+      // 성공 메시지 (원하면 toast로 대체)
+      alert('삭제되었습니다.')
+    } catch (err) {
+      console.error('delete error', err)
+      alert('삭제에 실패했습니다. 다시 시도해주세요.')
+      // 롤백
+      setMyPosts(prev)
+    }
+  }
+
+  
+
   if (!mounted || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -455,6 +483,14 @@ function MyPostsContentComponent() {
                   >
                     <Pencil className="w-5 h-5" />
                     <span className="sr-only">수정</span>
+                  </Button>
+
+                  {/* 삭제 버튼 -> handleDelete 호출 */}
+                  <Button
+                    onClick={() => handleDelete(post.postId!)}
+                    className="px-3 py-1 rounded-md bg-red-400 text-white font-semibold hover:bg-red-500 disabled:opacity-50"
+                  >
+                    삭제
                   </Button>
                 </div>
 
