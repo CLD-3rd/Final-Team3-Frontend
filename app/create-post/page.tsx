@@ -232,7 +232,7 @@ export default function CreatePostPage() {
   const [isLoadingPlaces, setIsLoadingPlaces] = useState(false)
   const locationInputRef = useRef<HTMLInputElement>(null)
   const predictionsRef = useRef<HTMLDivElement>(null)
-  const GOOGLE_PLACES_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || ""
+  const GOOGLE_PLACES_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || "AIzaSyAEdB2-APCc2ml50ipMsoTdtKEGOvT6Flc"
   
   // Google Places Autocomplete Service 초기화
   useEffect(() => {
@@ -379,11 +379,14 @@ export default function CreatePostPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // 파일 타입 체크
-    if (!file.type.startsWith('image/')) {
-      addToast("이미지 파일만 업로드 가능합니다.", 'error')
-      return
-    }
+    const allowedTypes = ['image/jpeg', 'image/png']
+
+    if (!allowedTypes.includes(file.type)) {
+    addToast("이미지는 JPG, PNG만 가능합니다.", 'error')
+    
+    e.currentTarget.value = ""
+    return
+  }
 
     setSelectedImage(file)
     setError("")
