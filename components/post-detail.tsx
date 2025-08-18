@@ -907,7 +907,11 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                               참가 신청이 거절되었습니다
                             </div>
                           ) : (
-                            <button onClick={handleCancelApplication}>
+                            <button 
+                              onClick={handleCancelApplication}
+                              className="px-12 py-3 rounded-2xl font-bold text-lg transition-all duration-300 bg-red-400 text-white hover:bg-red-500 shadow-lg"
+
+                              >
                               참가신청 취소하기
                             </button>
                           )
