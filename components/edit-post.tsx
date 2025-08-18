@@ -727,319 +727,322 @@ export default function EditPostModal({ isOpen, postId, onClose }: EditPostModal
       />
     ))}
 
-    <div className="relative w-full max-w-5xl mx-auto bg-white rounded-3xl shadow-2xl p-6 px-20 overflow-y-auto max-h-[90vh]">
-      {/* 닫기 버튼 */}
-      <button
-        onClick={onClose}
-        className="absolute top-6 right-6 text-gray-400 hover:text-black text-2xl"
-      >
-        <X className="w-7 h-7" />
-      </button>
-
-      {/* Header */}
-      <div className="flex flex-col items-center pb-6">
-        <span className="text-3xl mb-3">✏️</span>
-        <h1 className="text-2xl font-bold text-gray-900 mb-3">모집글 수정</h1>
-      </div>
-
-      {loadingData ? (
-        <div className="py-32 text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-black mx-auto mb-8"></div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">모집글 정보를 불러오는 중...</h1>
-          <p className="text-lg text-gray-600">권한을 확인하고 데이터를 로딩하고 있습니다</p>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-8">
-          <div className="space-y-3">
-            <Label className="text-lg font-semibold text-gray-900">
-              제목 <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              placeholder="어떤 운동을 함께 할지 간단히 적어주세요"
-              value={formData.title}
-              onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-              className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50"
-              required
-            />
-          </div>
-
-          <div className="space-y-4">
-            <Label className="text-lg font-semibold text-gray-900">
-              운동 종목 <span className="text-red-500">*</span>
-            </Label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {sports.map((sport) => (
-                <button
-                  key={sport.id}
-                  type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, sport: sport.id }))}
-                  className={`p-4 rounded-2xl border-2 transition-all duration-200 hover:scale-105 ${
-                    formData.sport === sport.id
-                      ? "border-black bg-black text-white shadow-lg"
-                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  <div className="text-center">
-                    <div className="text-3xl mb-3">{sport.icon}</div>
-                    <div className="font-semibold">{sport.name}</div>
-                  </div>
-                </button>
-              ))}
+    <div className="relative w-full max-w-5xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh]">
+      {/* 고정된 헤더 */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">✏️</span>
             </div>
+            <span className="font-bold text-gray-900">모집글 수정</span>
           </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+          >
+            <X className="w-6 h-6 text-gray-700" />
+          </button>
+        </div>
+      </header>
 
-          
-
-          <div className="space-y-3 relative">
-            <Label className="text-lg font-semibold text-gray-900">
-              상세 위치 <span className="text-red-500">*</span>
-            </Label>
-            <div className="relative">
+      {/* 스크롤 가능한 콘텐츠 영역 */}
+      <div className="overflow-y-auto max-h-[calc(90vh-80px)] px-6 py-6">
+        {loadingData ? (
+          <div className="py-32 text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-black mx-auto mb-8"></div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">모집글 정보를 불러오는 중...</h1>
+            <p className="text-lg text-gray-600">권한을 확인하고 데이터를 로딩하고 있습니다</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="space-y-3">
+              <Label className="text-lg font-semibold text-gray-900">
+                제목 <span className="text-red-500">*</span>
+              </Label>
               <Input
-                ref={locationInputRef}
-                placeholder="장소명을 입력하세요 (예: 강남구 스포츠센터)"
-                value={formData.location}
-                onChange={(e) => {
-                  setFormData((prev) => ({ ...prev, location: e.target.value }))
-                }}
-                onFocus={() => {
-                  if (predictions.length > 0) {
-                    setShowPredictions(true)
-                  }
-                }}
-                className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50 pr-12"
+                placeholder="어떤 운동을 함께 할지 간단히 적어주세요"
+                value={formData.title}
+                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50"
                 required
               />
-              <MapPin className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              
-              {/* 로딩 인디케이터 */}
-              {isLoadingPlaces && (
-                <div className="absolute right-12 top-1/2 -translate-y-1/2">
-                  <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-black rounded-full"></div>
-                </div>
-              )}
             </div>
 
-            {/* 자동완성 예측 결과 */}
-            {showPredictions && predictions.length > 0 && (
-              <div 
-                ref={predictionsRef}
-                className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-xl shadow-xl max-h-60 overflow-y-auto z-50"
-              >
-                {predictions.map((prediction, index) => (
+            <div className="space-y-4">
+              <Label className="text-lg font-semibold text-gray-900">
+                운동 종목 <span className="text-red-500">*</span>
+              </Label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {sports.map((sport) => (
                   <button
-                    key={prediction.place_id}
+                    key={sport.id}
                     type="button"
-                    onClick={() => handlePredictionSelect(prediction)}
-                    className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center gap-3 ${
-                      index !== predictions.length - 1 ? 'border-b border-gray-100' : ''
-                    } ${index === 0 ? 'rounded-t-xl' : ''} ${
-                      index === predictions.length - 1 ? 'rounded-b-xl' : ''
+                    onClick={() => setFormData((prev) => ({ ...prev, sport: sport.id }))}
+                    className={`p-4 rounded-2xl border-2 transition-all duration-200 hover:scale-105 ${
+                      formData.sport === sport.id
+                        ? "border-black bg-black text-white shadow-lg"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
                     }`}
                   >
-                    <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900 text-sm">
-                        {prediction.structured_formatting.main_text}
-                      </div>
-                      {prediction.structured_formatting.secondary_text && (
-                        <div className="text-xs text-gray-500 mt-0.5">
-                          {prediction.structured_formatting.secondary_text}
-                        </div>
-                      )}
+                    <div className="text-center">
+                      <div className="text-3xl mb-3">{sport.icon}</div>
+                      <div className="font-semibold">{sport.name}</div>
                     </div>
                   </button>
                 ))}
               </div>
-            )}
-          </div>
-
-          {/* 지역 선택 (자동으로 설정됨) */}
-          <div className="space-y-3">
-            <Label className="text-lg font-semibold text-gray-900">
-              지역 <span className="text-red-500">*</span>
-            </Label>
-            <div className="relative">
-              <Input
-                value={townOptions.find(opt => opt.value === formData.town)?.label || ""}
-                readOnly
-                className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-100 pr-14 cursor-not-allowed"
-                required
-              />
-
             </div>
 
-          </div>
-
-          <div className="space-y-4">
-            <Label className="text-lg font-semibold text-gray-900">
-              날짜 및 시간 <span className="text-red-500">*</span>
-            </Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-600">날짜</label>
+            <div className="space-y-3 relative">
+              <Label className="text-lg font-semibold text-gray-900">
+                상세 위치 <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
                 <Input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
-                  className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-600">시간</label>
-                <Input
-                  type="time"
-                  value={formData.time}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, time: e.target.value }))}
-                  className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <Label className="text-lg font-semibold text-gray-900">
-              총 인원 (본인 포함) <span className="text-red-500">*</span>
-            </Label>
-            <div className="bg-gray-50 rounded-3xl p-8">
-              <div className="flex items-center justify-center gap-8">
-                <button
-                  type="button"
-                  onClick={() => handleParticipantChange(false)}
-                  className="w-16 h-16 rounded-full bg-black text-white hover:bg-gray-800 transition-colors flex items-center justify-center shadow-lg hover:scale-105"
-                >
-                  <Minus className="w-6 h-6" />
-                </button>
-                <div className="text-center">
-                  <div className="text-5xl font-bold text-gray-900 mb-2">{formData.maxParticipants}</div>
-                  <div className="text-lg text-gray-600 font-medium">명</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleParticipantChange(true)}
-                  className="w-16 h-16 rounded-full bg-black text-white hover:bg-gray-800 transition-colors flex items-center justify-center shadow-lg hover:scale-105"
-                >
-                  <Plus className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <Label className="text-lg font-semibold text-gray-900">
-              참여 성별 <span className="text-red-500">*</span>
-            </Label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {genderOptions.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, gender: option.id as "ALL" | "MALE" | "FEMALE" }))}
-                  className={`p-4 rounded-2xl border-2 transition-all font-semibold ${
-                    formData.gender === option.id
-                      ? "border-black bg-black text-white"
-                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  {option.name}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <Label className="text-lg font-semibold text-gray-900">1인당 참가비</Label>
-            <div className="relative">
-              <Input
-                type="number"
-                placeholder="0"
-                value={formData.cost}
-                onChange={(e) => setFormData((prev) => ({ ...prev, cost: e.target.value }))}
-                className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50 pr-12"
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg font-medium text-gray-600">원</span>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <Label className="text-lg font-semibold text-gray-900">구장 이미지</Label>
-            {/* 이미지 미리보기 */}
-            {imagePreview && (
-              <div className="relative bg-gray-50 rounded-3xl overflow-hidden">
-                <img
-                  src={imagePreview}
-                  alt="구장 이미지 미리보기"
-                  className="w-full h-64 object-cover"
-                  onError={(e) => {
-                    const img = e.target as HTMLImageElement
-                    img.style.display = "none"
-                    addToast("이미지를 불러올 수 없습니다.", "error")
+                  ref={locationInputRef}
+                  placeholder="장소명을 입력하세요 (예: 강남구 스포츠센터)"
+                  value={formData.location}
+                  onChange={(e) => {
+                    setFormData((prev) => ({ ...prev, location: e.target.value }))
                   }}
+                  onFocus={() => {
+                    if (predictions.length > 0) {
+                      setShowPredictions(true)
+                    }
+                  }}
+                  className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50 pr-12"
+                  required
+                />
+                <MapPin className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                
+                {/* 로딩 인디케이터 */}
+                {isLoadingPlaces && (
+                  <div className="absolute right-12 top-1/2 -translate-y-1/2">
+                    <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-black rounded-full"></div>
+                  </div>
+                )}
+              </div>
+
+              {/* 자동완성 예측 결과 */}
+              {showPredictions && predictions.length > 0 && (
+                <div 
+                  ref={predictionsRef}
+                  className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-xl shadow-xl max-h-60 overflow-y-auto z-50"
+                >
+                  {predictions.map((prediction, index) => (
+                    <button
+                      key={prediction.place_id}
+                      type="button"
+                      onClick={() => handlePredictionSelect(prediction)}
+                      className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center gap-3 ${
+                        index !== predictions.length - 1 ? 'border-b border-gray-100' : ''
+                      } ${index === 0 ? 'rounded-t-xl' : ''} ${
+                        index === predictions.length - 1 ? 'rounded-b-xl' : ''
+                      }`}
+                    >
+                      <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 text-sm">
+                          {prediction.structured_formatting.main_text}
+                        </div>
+                        {prediction.structured_formatting.secondary_text && (
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {prediction.structured_formatting.secondary_text}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 지역 선택 (자동으로 설정됨) */}
+            <div className="space-y-3">
+              <Label className="text-lg font-semibold text-gray-900">
+                지역 <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  value={townOptions.find(opt => opt.value === formData.town)?.label || ""}
+                  readOnly
+                  className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-100 pr-14 cursor-not-allowed"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <Label className="text-lg font-semibold text-gray-900">
+                날짜 및 시간 <span className="text-red-500">*</span>
+              </Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-600">날짜</label>
+                  <Input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
+                    className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-600">시간</label>
+                  <Input
+                    type="time"
+                    value={formData.time}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, time: e.target.value }))}
+                    className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <Label className="text-lg font-semibold text-gray-900">
+                총 인원 (본인 포함) <span className="text-red-500">*</span>
+              </Label>
+              <div className="bg-gray-50 rounded-3xl p-8">
+                <div className="flex items-center justify-center gap-8">
+                  <button
+                    type="button"
+                    onClick={() => handleParticipantChange(false)}
+                    className="w-16 h-16 rounded-full bg-black text-white hover:bg-gray-800 transition-colors flex items-center justify-center shadow-lg hover:scale-105"
+                  >
+                    <Minus className="w-6 h-6" />
+                  </button>
+                  <div className="text-center">
+                    <div className="text-5xl font-bold text-gray-900 mb-2">{formData.maxParticipants}</div>
+                    <div className="text-lg text-gray-600 font-medium">명</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleParticipantChange(true)}
+                    className="w-16 h-16 rounded-full bg-black text-white hover:bg-gray-800 transition-colors flex items-center justify-center shadow-lg hover:scale-105"
+                  >
+                    <Plus className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <Label className="text-lg font-semibold text-gray-900">
+                참여 성별 <span className="text-red-500">*</span>
+              </Label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {genderOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, gender: option.id as "ALL" | "MALE" | "FEMALE" }))}
+                    className={`p-4 rounded-2xl border-2 transition-all font-semibold ${
+                      formData.gender === option.id
+                        ? "border-black bg-black text-white"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    {option.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-lg font-semibold text-gray-900">1인당 참가비</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={formData.cost}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, cost: e.target.value }))}
+                  className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50 pr-12"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg font-medium text-gray-600">원</span>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <Label className="text-lg font-semibold text-gray-900">구장 이미지</Label>
+              {/* 이미지 미리보기 */}
+              {imagePreview && (
+                <div className="relative bg-gray-50 rounded-3xl overflow-hidden">
+                  <img
+                    src={imagePreview}
+                    alt="구장 이미지 미리보기"
+                    className="w-full h-64 object-cover"
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement
+                      img.style.display = "none"
+                      addToast("이미지를 불러올 수 없습니다.", "error")
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleImageRemove}
+                    className="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+              {/* 파일 업로드 버튼 */}
+              <div className="flex flex-col gap-4">
+                <input
+                  id="image-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  className="hidden"
                 />
                 <button
                   type="button"
-                  onClick={handleImageRemove}
-                  className="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
+                  className="flex items-center justify-center gap-3 p-6 border-2 border-dashed border-gray-300 rounded-2xl text-gray-600 hover:border-gray-400 hover:bg-gray-50 transition-colors"
+                  onClick={() => document.getElementById("image-upload")?.click()}
                 >
-                  <X className="w-5 h-5" />
+                  <Upload className="w-6 h-6" />
+                  <span className="font-medium">이미지 선택하기</span>
                 </button>
+                <p className="text-sm text-gray-500 text-center">JPG, PNG 파일만 업로드 가능합니다</p>
               </div>
-            )}
-            {/* 파일 업로드 버튼 */}
-            <div className="flex flex-col gap-4">
-              <input
-                id="image-upload"
-                type="file"
-                accept="image/*"
-                onChange={handleImageSelect}
-                className="hidden"
-              />
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-lg font-semibold text-gray-900">상세 설명</Label>
+              <div className="relative">
+                <Textarea
+                  placeholder={`운동에 대한 추가 정보를 입력하세요.\n예) 초보자 환영, 준비물, 운동 후 식사 계획 등`}
+                  rows={6}
+                  value={formData.content}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, content: e.target.value }))}
+                  className="text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50 resize-none"
+                  maxLength={300}
+                />
+                <div className="absolute bottom-4 right-4 text-sm text-gray-500 bg-white px-2 py-1 rounded-lg">
+                  {formData.content.length}/300자
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-8">
               <button
-                type="button"
-                className="flex items-center justify-center gap-3 p-6 border-2 border-dashed border-gray-300 rounded-2xl text-gray-600 hover:border-gray-400 hover:bg-gray-50 transition-colors"
-                onClick={() => document.getElementById("image-upload")?.click()}
+                type="submit"
+                disabled={loading}
+                className={`w-full py-6 rounded-2xl font-bold text-xl transition-all duration-300 ${
+                  loading
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-black text-white hover:bg-gray-800 hover:scale-[1.02] shadow-lg hover:shadow-xl"
+                }`}
               >
-                <Upload className="w-6 h-6" />
-                <span className="font-medium">이미지 선택하기</span>
+                {loading ? "수정하는 중..." : "모집글 수정하기"}
               </button>
-              <p className="text-sm text-gray-500 text-center">JPG, PNG 파일만 업로드 가능합니다</p>
             </div>
-          </div>
-
-          <div className="space-y-3">
-            <Label className="text-lg font-semibold text-gray-900">상세 설명</Label>
-            <div className="relative">
-              <Textarea
-                placeholder={`운동에 대한 추가 정보를 입력하세요.\n예) 초보자 환영, 준비물, 운동 후 식사 계획 등`}
-                rows={6}
-                value={formData.content}
-                onChange={(e) => setFormData((prev) => ({ ...prev, content: e.target.value }))}
-                className="text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50 resize-none"
-                maxLength={300}
-              />
-              <div className="absolute bottom-4 right-4 text-sm text-gray-500 bg-white px-2 py-1 rounded-lg">
-                {formData.content.length}/300자
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-8">
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full py-6 rounded-2xl font-bold text-xl transition-all duration-300 ${
-                loading
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : "bg-black text-white hover:bg-gray-800 hover:scale-[1.02] shadow-lg hover:shadow-xl"
-              }`}
-            >
-              {loading ? "수정하는 중..." : "모집글 수정하기"}
-            </button>
-          </div>
-        </form>
-      )}
+          </form>
+        )}
+      </div>
     </div>
   </div>
 )
