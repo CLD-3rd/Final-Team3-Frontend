@@ -48,6 +48,10 @@ const genderOptions = [
   { id: "FEMALE", name: "여성만" },
 ]
 
+export const MAX_COST = 1_000_000;
+export const krFormat = new Intl.NumberFormat("ko-KR");
+export const digitsOnly = (s: string) => s.replace(/[^\d]/g, "");
+
 // Google Maps API 타입 선언
 declare global {
   interface Window {
@@ -211,7 +215,7 @@ export default function CreatePostPage() {
     town: "",
     maxParticipants: 4,
     gender: "ALL" as "ALL" | "MALE" | "FEMALE",
-    cost: "",
+    cost: 0,
     content: "",
   })
   const [loading, setLoading] = useState(false)
@@ -426,7 +430,8 @@ export default function CreatePostPage() {
         town: formData.town,
         sports: formData.sport, 
         gender: formData.gender,
-        cost: formData.cost ? Number.parseInt(formData.cost) : 0,
+        // cost: formData.cost ? Number.parseInt(formData.cost) : 0,
+        cost: formData.cost,
         maxPeople: formData.maxParticipants,
         date: isoDateTime,
       }
@@ -737,16 +742,33 @@ export default function CreatePostPage() {
             <div className="space-y-3">
               <Label className="text-lg font-semibold text-gray-900">1인당 참가비</Label>
               <div className="relative">
-                <Input
+                {/* <Input
                   type="number"
                   placeholder="0"
                   value={formData.cost}
                   onChange={(e) => setFormData((prev) => ({ ...prev, cost: e.target.value }))}
                   className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50 pr-12"
+                /> */}
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="0"
+                  value={krFormat.format(formData.cost)} // 기본값은 0원
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^\d]/g, "");
+                    if (raw === "") {
+                      setFormData(prev => ({ ...prev, cost: 0 }));
+                      return;
+                    }
+                    const n = Math.min(parseInt(raw, 10), MAX_COST);
+                    setFormData(prev => ({ ...prev, cost: n })); // 숫자로 보관
+                  }}
+                  className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50 pr-12"
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg font-medium text-gray-600">원</span>
               </div>
-            </div>
+            </div>      
 
             <div className="space-y-4">
               <Label className="text-lg font-semibold text-gray-900">구장 이미지</Label>

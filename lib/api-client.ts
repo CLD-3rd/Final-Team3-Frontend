@@ -10,8 +10,6 @@ export interface PostListResponse {
     totalPages: number
   }
 
-
-
 class ApiClient {
   private baseURL: string
   private token: string | null = null
