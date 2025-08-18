@@ -621,7 +621,7 @@ export default function MainPage() {
                     {selectedDate ? `${selectedDate} 모집글` : "모집글 목록"}
                   </h3>
                   <p className="text-gray-500 mt-1">
-                    총 {posts.length}개의 모집글
+                    총 {filteredPosts.length}개의 모집글
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -691,7 +691,7 @@ export default function MainPage() {
                 </div>
               )}
 
-              {!loading && !error && posts.length === 0 && (
+              {!loading && !error && filteredPosts.length === 0 && (
                 <div className="text-center py-16">
                   <div className="w-24 h-24 bg-gray-50 rounded-2xl mx-auto mb-8 flex items-center justify-center">
                     <Users className="w-12 h-12 text-gray-400" />
@@ -709,9 +709,9 @@ export default function MainPage() {
                 </div>
               )}
 
-              {!loading && !error && posts.length > 0 && (
+              {!loading && !error && filteredPosts.length > 0 && (
                 <div className="grid gap-8 lg:grid-cols-2">
-                  {posts.map((post) => (
+                  {filteredPosts.map((post) => (
                     <Card key={post.id} className="group bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden">
                       <CardContent className="p-8">
                         <div className="flex justify-between items-start mb-6">
