@@ -215,7 +215,7 @@ export default function CreatePostPage() {
     town: "",
     maxParticipants: 4,
     gender: "ALL" as "ALL" | "MALE" | "FEMALE",
-    cost: 0,
+    cost: "",
     content: "",
   })
   const [loading, setLoading] = useState(false)
@@ -478,8 +478,7 @@ export default function CreatePostPage() {
         town: formData.town,
         sports: formData.sport, 
         gender: formData.gender,
-        // cost: formData.cost ? Number.parseInt(formData.cost) : 0,
-        cost: formData.cost,
+        cost: formData.cost ? Number.parseInt(formData.cost) : 0,
         maxPeople: formData.maxParticipants,
         date: isoDateTime,
       }
@@ -803,20 +802,22 @@ export default function CreatePostPage() {
                 <Input
                   type="text"
                   inputMode="numeric"
-                  pattern="[0-9]*"
                   placeholder="0"
-                  value={krFormat.format(formData.cost)} // 기본값은 0원
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/[^\d]/g, "");
-                    if (raw === "") {
-                      setFormData(prev => ({ ...prev, cost: 0 }));
-                      return;
-                    }
-                    const n = Math.min(parseInt(raw, 10), MAX_COST);
-                    setFormData(prev => ({ ...prev, cost: n })); // 숫자로 보관
-                  }}
-                  className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50 pr-12"
-                />
+                  value={formData.cost ? krFormat.format(Number(formData.cost)) : ""}
+                    onChange={(e) => {
+                      // 입력값에서 숫자만 추출
+                      const digits = e.target.value.replace(/[^\d]/g, "")
+                      if (digits === "") {
+                        setFormData(prev => ({ ...prev, cost: "" }))
+                        return
+                      }
+                      // 상한선 적용
+                      const clamped = Math.min(parseInt(digits, 10), MAX_COST)
+                      // 상태엔 "숫자 문자열"로만 저장 (콤마 없음)
+                      setFormData(prev => ({ ...prev, cost: String(clamped) }))
+                    }}
+                    className="h-14 text-lg border-2 border-gray-200 rounded-2xl focus:border-black focus:ring-0 bg-gray-50 pr-12"
+                  />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg font-medium text-gray-600">원</span>
               </div>
             </div>      
