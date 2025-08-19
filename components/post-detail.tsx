@@ -796,12 +796,6 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                                   습도 {post.weather.humidity}%
                                 </span>
                               )}
-                              {((post.weather.tempMin && post.weather.tempMin !== '-') || (post.weather.tempMax && post.weather.tempMax !== '-')) && (
-                                <span className="text-sm text-orange-600 bg-orange-50 px-2 py-1 rounded-lg">
-                                  온도 {post.weather.tempMin && post.weather.tempMin !== '-' ? `${post.weather.tempMin}°` : '?'}
-                                  {post.weather.tempMax && post.weather.tempMax !== '-' ? `/${post.weather.tempMax}°` : ''}
-                                </span>
-                              )}
                             </div>
                           </div>
                         </div>
