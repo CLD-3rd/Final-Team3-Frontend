@@ -787,12 +787,12 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                             <div className="flex items-center gap-4">
                               <p className="text-lg font-semibold text-gray-900">{getWeatherText(post.weather.weather)}</p>
                               {post.weather.precipitation && post.weather.precipitation !== '-' && (
-                                <span className="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">
+                                <span className="text-sm text-blue-600 bg-blue-100/50 px-2 py-1 rounded-lg">
                                   강수확률 {post.weather.precipitation}%
                                 </span>
                               )}
                               {post.weather.humidity && post.weather.humidity !== '-' && (
-                                <span className="text-sm text-gray-600 bg-gray-50 px-2 py-1 rounded-lg">
+                                <span className="text-sm text-gray-600 bg-gray-200/70 px-2 py-1 rounded-lg">
                                   습도 {post.weather.humidity}%
                                 </span>
                               )}
