@@ -776,8 +776,8 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                           <p className="text-lg font-semibold text-gray-900">{getGenderText(post.gender)}</p>
                         </div>
                       </div>
-                      {/* 날씨 - weather가 있고 null이 아닐 때만 표시 */}
-                      {post.weather && post.weather.weather && post.weather.weather !== '-' && (
+                      {/* 날씨 - weather가 1, 3, 4 중 하나일 때만 표시 */}
+                      {post.weather && post.weather.weather && ['1', '3', '4'].includes(post.weather.weather) && (
                         <div className="flex items-center gap-4 md:col-span-2">
                           <div className="w-12 h-12 bg-sky-100 rounded-2xl flex items-center justify-center">
                             <span className="text-2xl">{getWeatherIcon(post.weather.weather)}</span>
@@ -792,7 +792,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                                 </span>
                               )}
                               {post.weather.humidity && post.weather.humidity !== '-' && (
-                                <span className="text-sm text-gray-600 bg-gray-200/70 px-2 py-1 rounded-lg">
+                                <span className="text-sm text-gray-600 bg-gray-200/50 px-2 py-1 rounded-lg">
                                   습도 {post.weather.humidity}%
                                 </span>
                               )}
