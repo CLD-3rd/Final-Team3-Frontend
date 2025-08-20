@@ -24,6 +24,15 @@ interface PostData {
   location: string
   bookmarked: boolean
   userEmail?: string 
+  weather?: {
+    date: string
+    time: string
+    weather: string
+    precipitation: string
+    tempMin: string
+    tempMax: string
+    humidity: string
+  }
 }
 
 interface MyApplication {
@@ -619,6 +628,24 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
     return colorMap[status] || 'bg-gray-500'
   }
 
+  const getWeatherIcon = (weather: string) => {
+    const weatherMap: { [key: string]: string } = {
+      '1': '☀️', // 맑음
+      '3': '⛅', // 구름많음
+      '4': '☁️'  // 흐림
+    }
+    return weatherMap[weather] || '🌤️'
+  }
+
+  const getWeatherText = (weather: string) => {
+    const weatherMap: { [key: string]: string } = {
+      '1': '맑음',
+      '3': '구름많음', 
+      '4': '흐림'
+    }
+    return weatherMap[weather] || '알 수 없음'
+  }
+
   if (!isOpen) return null
 
   return (
@@ -749,6 +776,30 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                           <p className="text-lg font-semibold text-gray-900">{getGenderText(post.gender)}</p>
                         </div>
                       </div>
+                      {/* 날씨 - weather가 1, 3, 4 중 하나일 때만 표시 */}
+                      {post.weather && post.weather.weather && ['1', '3', '4'].includes(post.weather.weather) && (
+                        <div className="flex items-center gap-4 md:col-span-2">
+                          <div className="w-12 h-12 bg-sky-100 rounded-2xl flex items-center justify-center">
+                            <span className="text-2xl">{getWeatherIcon(post.weather.weather)}</span>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-500 font-medium">날씨</p>
+                            <div className="flex items-center gap-4">
+                              <p className="text-lg font-semibold text-gray-900">{getWeatherText(post.weather.weather)}</p>
+                              {post.weather.precipitation && post.weather.precipitation !== '-' && (
+                                <span className="text-sm text-blue-600 bg-blue-100/50 px-2 py-1 rounded-lg">
+                                  강수확률 {post.weather.precipitation}%
+                                </span>
+                              )}
+                              {post.weather.humidity && post.weather.humidity !== '-' && (
+                                <span className="text-sm text-gray-600 bg-gray-200/50 px-2 py-1 rounded-lg">
+                                  습도 {post.weather.humidity}%
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* 참가비 */}
@@ -907,7 +958,11 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                               참가 신청이 거절되었습니다
                             </div>
                           ) : (
-                            <button onClick={handleCancelApplication}>
+                            <button 
+                              onClick={handleCancelApplication}
+                              className="px-12 py-3 rounded-2xl font-bold text-lg transition-all duration-300 bg-red-400 text-white hover:bg-red-500 shadow-lg"
+
+                              >
                               참가신청 취소하기
                             </button>
                           )
