@@ -111,6 +111,9 @@ function MyPostsContentComponent() {
       setMyPosts(posts)
   }
 
+  const isPostFull = (post: MyPost) =>
+  post.status === 'CLOSED' || post.currentPeople >= post.maxPeople
+
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null
     return sessionStorage.getItem('auth_token')
@@ -320,6 +323,13 @@ function MyPostsContentComponent() {
   }
 
   const handleApprove = async (postIndex: number, applicantId: number) => {
+    const post = myPosts[postIndex]
+    if (!post) return
+    if (isPostFull(post)) {
+      addToast('이미 모집완료 되었습니다.', 'error')
+      return
+    }
+    
     try {
       const postId = myPosts[postIndex]?.postId || (postIndex + 1)
       const result = await manageApplicant(postId, applicantId, 'ACCEPT')
@@ -333,19 +343,16 @@ function MyPostsContentComponent() {
         ) || []
       }))
 
-      setMyPosts(prev => prev.map((post, index) => {
-        if (index === postIndex) {
-          const newCurrentPeople = post.currentPeople + 1
-          const newStatus = newCurrentPeople >= post.maxPeople ? 'CLOSED' : post.status
-          return { 
-            ...post, 
-            currentPeople: newCurrentPeople,
-            status: newStatus as "OPEN" | "CLOSED"
-          }
+      setMyPosts(prev => prev.map((p, i) => {
+        if (i !== postIndex) return p
+        const newCurrent = p.currentPeople + 1
+        const reachedMax = newCurrent >= p.maxPeople
+        return {
+          ...p,
+          currentPeople: newCurrent,
+          status: reachedMax ? 'CLOSED' : p.status
         }
-        return post
       }))
-
     } catch (err) {
       addToast(err instanceof Error ? err.message : '승인에 실패했습니다.', 'error')
     }
@@ -566,8 +573,11 @@ function MyPostsContentComponent() {
                             <div className="flex gap-2 mt-3">
                               <Button
                                 size="sm"
-                                className="bg-green-500 hover:bg-green-600 text-white flex-1"
+                                className="bg-green-500 hover:bg-green-600 text-white flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
                                 onClick={() => handleApprove(index, applicant.userId)}
+                                disabled={
+                                applicant.status !== 'PENDING' || isPostFull(myPosts[index])
+                              }
                               >
                                 승인
                               </Button>
