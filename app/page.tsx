@@ -54,11 +54,11 @@ function extractMainRegion(town: string): string | undefined {
   return regions.find(region => town.startsWith(region));
 }
 
-const getAuthToken = () => localStorage.getItem("auth_token");
+const getAuthToken = () => sessionStorage.getItem("auth_token");
 
 export default function MainPage() {
   const router = useRouter();
-  const [sortBy, setSortBy] = useState("recent")
+  const [sortType, setSortType] = useState("DATE")
   const [selectedSport, setSelectedSport] = useState("전체")
   const [searchQuery, setSearchQuery] = useState("")
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
@@ -76,14 +76,15 @@ export default function MainPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
-  // pagination states (추가)
   const [page, setPage] = useState<number>(0)
   const [size] = useState<number>(10) // 기본 10개
   const [totalElements, setTotalElements] = useState<number>(0); // 총 게시물 수
   const [totalPages, setTotalPages] = useState<number>(1);       // 총 페이지 수
-    
+  
+  
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+  
   const handleCreatePost = () => {
     const token = getAuthToken();
     if (!token) {
@@ -122,8 +123,13 @@ export default function MainPage() {
   }, []);
 
   useEffect(() => {
-    apiClient.getPosts().then(setPosts);
-  }, []);
+    apiClient.getPosts()
+    .then(response => setPosts(response.posts))  // posts 배열만 setPosts에 전달
+    .catch(error => {
+      console.error(error);
+      setPosts([]);
+    });
+}, []);
 
   useEffect(() => {
     const fetchMyFollows = async () => {
@@ -140,21 +146,40 @@ export default function MainPage() {
   useEffect(() => {
     fetchPosts()
     fetchFavorites()
-  }, [selectedSport, sortBy, searchQuery, selectedRegion, selectedGender, selectedDate])
+  }, [selectedSport, sortType, searchQuery, selectedRegion, selectedGender, selectedDate, page])
 
+  useEffect(() => {
+    setPage(0) // <-- 추가: 필터/정렬 바뀌면 1페이지로
+  }, [selectedSport, sortType, searchQuery, selectedRegion, selectedGender, selectedDate])
+  
   const fetchPosts = async () => {
     try {
       setLoading(true)
       setError("")
       const params = {
         sports: selectedSport !== "전체" ? selectedSport : undefined,
-        sortBy,
+        sortType,
         search: searchQuery || undefined,
         gender: genderMap[selectedGender as keyof typeof genderMap],
         date: selectedDate || undefined,
+        page,
+        size,
       }
-      const posts = await apiClient.getPosts(params);  
-      setPosts(posts);
+      const res = await apiClient.getPosts(params);
+      console.log('API response:', res);
+      // 서버가 { posts, page, size, totalElements, totalPages } 형태로 응답하면 posts 추출
+      if (res && typeof res === "object" && Array.isArray((res as any).posts)) {
+        setPosts((res).posts);
+        // setPage(res.page);
+        setTotalElements(res.totalElements);
+        setTotalPages(res.totalPages);
+        // (옵션) 서버 페이지 정보를 사용하려면 setPage((res as any).page || 0) 등으로 처리
+      } else if (Array.isArray(res)) {
+        // 기존 방식: 배열 바로 사용
+        setPosts(res);
+      } else {
+        setPosts([]);
+      }
     } catch (error) {
       console.error("Failed to fetch posts:", error)
       setError("게시글을 불러오는데 실패했습니다.")
@@ -163,6 +188,12 @@ export default function MainPage() {
       setLoading(false)
     }
   }
+
+  const handlePageChange = (newPage: number) => {
+  if (newPage >= 0 && newPage < totalPages) {
+    setPage(newPage);
+    }
+  };
 
   useEffect(() => {
     console.log(posts);
@@ -233,15 +264,47 @@ export default function MainPage() {
     return true;
   });
 
-  const sortedPosts = (() => {
-    if (sortBy === "popular") {
-      return [...filteredPosts].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+  // const sortedPosts = (() => {
+  //   if (sortBy === "popular") {
+  //     return [...filteredPosts].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+  //   }
+  //   if (sortBy === "recent") {
+  //     return [...filteredPosts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  //   }
+  //   return filteredPosts;
+  // })();
+
+    // NEW: 보정 - 필터 변경 등으로 현재 page가 초과하면 마지막 페이지로 이동
+  useEffect(() => {
+    if (page >= totalPages) {
+      setPage(Math.max(0, totalPages - 1));
     }
-    if (sortBy === "recent") {
-      return [...filteredPosts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+  }, [totalPages, page]);
+
+  // NEW: 현재 페이지에 해당하는 slice
+  const fromIndex = page * size;
+  const toIndex = Math.min(fromIndex + size, totalElements);
+  // const pagedPosts = sortedPosts.slice(fromIndex, toIndex);
+  const pagedPosts = posts;
+
+  
+
+
+  // NEW: 페이지 번호 창(최대 5개) 계산 헬퍼
+  const getPageRange = (current: number, last: number, maxShown = 5) => {
+    const half = Math.floor(maxShown / 2);
+    let start = Math.max(0, current - half);
+    let end = Math.min(last - 1, start + maxShown - 1);
+    if (end - start + 1 < maxShown) {
+      start = Math.max(0, end - maxShown + 1);
     }
-    return filteredPosts;
-  })();
+    const range: number[] = [];
+    for (let i = start; i <= end; i++) range.push(i);
+    return range;
+  }
+  const pageRange = getPageRange(page, totalPages, 5);
+  
 
   return (
     <div className="min-h-screen bg-white">
@@ -584,9 +647,9 @@ export default function MainPage() {
                     {loading ? "로딩중..." : ""}
                   </button>
                   <button
-                    onClick={() => setSortBy("popular")}
+                    onClick={() => setSortType("POPULAR")}
                     className={`px-4 py-2 rounded-xl font-medium transition-colors ${
-                      sortBy === "popular" 
+                      sortType === "POPULAR" 
                         ? "bg-gray-900 text-white" 
                         : "text-gray-600 hover:bg-gray-100"
                     }`}
@@ -594,9 +657,9 @@ export default function MainPage() {
                     인기순
                   </button>
                   <button
-                    onClick={() => setSortBy("nearest")}
+                    onClick={() => setSortType("DATE")}
                     className={`px-4 py-2 rounded-xl font-medium transition-colors ${
-                      sortBy === "nearest" 
+                      sortType === "DATE" 
                         ? "bg-gray-900 text-white" 
                         : "text-gray-600 hover:bg-gray-100"
                     }`}
@@ -648,7 +711,7 @@ export default function MainPage() {
 
               {!loading && !error && filteredPosts.length > 0 && (
                 <div className="grid gap-8 lg:grid-cols-2">
-                  {sortedPosts.map((post) => (
+                  {filteredPosts.map((post) => (
                     <Card key={post.id} className="group bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden">
                       <CardContent className="p-8">
                         <div className="flex justify-between items-start mb-6">
@@ -658,9 +721,11 @@ export default function MainPage() {
                             </Badge>
                             <Badge
                               className={`px-4 py-2 rounded-full font-semibold ${
-                                post.status === "모집중" 
-                                  ? "bg-green-100 text-green-700" 
-                                  : "bg-red-100 text-red-700"
+                                post.status === "모집중"
+                                  ? "bg-green-100 text-green-700"
+                                  : post.status === "모집완료"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-gray-500 text-white" // 만료일 경우
                               }`}
                             >
                               {post.status}
@@ -729,7 +794,6 @@ export default function MainPage() {
                                 </div>
                               ))}
                             </div>
-
                           </div>
                           <div className="text-right flex items-center gap-6">
                             <div>
@@ -756,7 +820,6 @@ export default function MainPage() {
                     </Card>
                   ))}
                   {modalOpen && selectedPostId !== null && (
-
                     <EventDetailModal
                       postId={selectedPostId}
                       isOpen={modalOpen}
@@ -769,9 +832,10 @@ export default function MainPage() {
                       onLogin={() => router.push('/login')} 
                     />
                   )}
-                  </div>
+                </div>
+              )}
 
-                  {/* ---------- Pagination controls ---------- */}
+              {/* ---------- Pagination controls ---------- */}
                   <div className="mt-10 flex items-center justify-center gap-3">
                     <button
                       onClick={() => setPage((p) => Math.max(0, p - 1))}
@@ -809,8 +873,6 @@ export default function MainPage() {
                     총 {totalElements}건 · {page + 1}/{totalPages} 페이지
                   </p>
                   {/* ------------------------------------------ */}
-                </>
-              )}
             </>
           )}
         </div>

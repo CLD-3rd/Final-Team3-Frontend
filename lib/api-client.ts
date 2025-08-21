@@ -2,15 +2,23 @@ import type { Post, User, CreatePostData, LoginData, SignupData, ApiResponse } f
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"
 
+export interface PostListResponse {
+    posts: Post[]
+    page: number
+    size: number
+    totalElements: number
+    totalPages: number
+  }
+
 class ApiClient {
   private baseURL: string
   private token: string | null = null
 
   constructor(baseURL: string) {
     this.baseURL = baseURL
-    // 클라이언트 사이드에서만 localStorage 접근
+    // 클라이언트 사이드에서만 sessionStorage 접근
     if (typeof window !== "undefined") {
-      this.token = localStorage.getItem("auth_token")
+      this.token = sessionStorage.getItem("auth_token")
     }
   }
 
@@ -56,11 +64,35 @@ class ApiClient {
     if (response.code === "USER201" && response.data?.token) {
       this.token = response.data.token
       if (typeof window !== "undefined") {
-        localStorage.setItem("auth_token", response.data.token)
+        sessionStorage.setItem("auth_token", response.data.token)
       }
     }
     return response
   }
+
+  async findEmail(nickname: string): Promise<ApiResponse<{ email: string }>> {
+    return this.request<ApiResponse<{ email: string }>>("/user/find-email", {
+      method: "POST",
+      body: JSON.stringify({ nickname }),
+    })
+  }
+
+  // 비밀번호 재설정 요청 (메일 발송)
+  async requestPasswordReset(email: string) {
+    return this.request<{ message?: string; code?: string }>("/user/request-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    })
+  }
+
+  // 비밀번호 재설정 확정
+  async confirmPasswordReset(token: string, newPassword: string) {
+    return this.request<{ message?: string; code?: string }>("/user/confirm-password", {
+      method: "POST",
+      body: JSON.stringify({ token, newPassword }),
+    })
+  }
+
   
   async signup(data: SignupData): Promise<ApiResponse<{ user: User; token: string }>> {
     return this.request<ApiResponse<{ user: User; token: string }>>("/user/signup", {
@@ -78,7 +110,7 @@ class ApiClient {
     } finally {
       this.token = null
       if (typeof window !== "undefined") {
-        localStorage.removeItem("auth_token")
+        sessionStorage.removeItem("auth_token")
       }
     }
   }
@@ -116,29 +148,55 @@ class ApiClient {
   // Posts methods
   async getPosts(params?: {
     sport?: string
-    sortBy?: string
+    sortType?: string
     search?: string
     region?: string
     gender?: string
-    date?: string
-  }): Promise<Post[]> {
+    date?: string,
+    page?: number,
+    size?: number
+  }): Promise<PostListResponse> {
     try {
       const searchParams = new URLSearchParams()
 
       if (params) {
-        Object.entries(params).forEach(([key, value]) => {
-          if (value) searchParams.append(key, value)
+              Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            searchParams.append(key, String(value))  // 값이 숫자여도 문자열로 변환해서 넣기
+          }
         })
       }
+
 
       const queryString = searchParams.toString()
       const endpoint = `/posts/list${queryString ? `?${queryString}` : ""}`
 
-      const response = await this.request<ApiResponse<{ posts: Post[] }>>(endpoint)
-      return response.data?.posts || []
+      const response = await this.request<ApiResponse<PostListResponse>>(endpoint)
+
+      // response.data가 { posts, page, size, totalElements, totalPages } 형태라고 가정
+      if (response.data) {
+        return response.data
+      } else {
+        // fallback: 빈 배열 등 초기값 반환
+        return {
+          posts: [],
+          page: 0,
+          size: 10,
+          totalElements: 0,
+          totalPages: 0,
+        }
+      }
+
     } catch (error) {
       console.error("Failed to fetch posts:", error)
-      return []
+      return {
+        posts: [],
+        page: 0,
+        size: 10,
+        totalElements: 0,
+        totalPages: 0,
+      }
+
     }
   }
 

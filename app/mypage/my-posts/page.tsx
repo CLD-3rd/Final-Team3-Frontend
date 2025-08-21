@@ -111,9 +111,12 @@ function MyPostsContentComponent() {
       setMyPosts(posts)
   }
 
+  const isPostFull = (post: MyPost) =>
+  post.status === 'CLOSED' || post.currentPeople >= post.maxPeople
+
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null
-    return localStorage.getItem("auth_token") 
+    return sessionStorage.getItem('auth_token')
   }
 
   const addToast = (message: string, type: 'success' | 'error') => {
@@ -143,7 +146,7 @@ function MyPostsContentComponent() {
       })
 
       if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('auth_token')
+        sessionStorage.removeItem('auth_token')
         localStorage.removeItem('accessToken')
         router.push('/login')
         throw new Error("인증이 만료되었습니다. 다시 로그인해주세요.")
@@ -225,6 +228,7 @@ function MyPostsContentComponent() {
       case 'REJECTED': return '거절됨'
       case 'OPEN': return '모집중'
       case 'CLOSED': return '모집완료'
+      case 'EXPIRED': return '모집만료'
       default: return status
     }
   }
@@ -319,6 +323,13 @@ function MyPostsContentComponent() {
   }
 
   const handleApprove = async (postIndex: number, applicantId: number) => {
+    const post = myPosts[postIndex]
+    if (!post) return
+    if (isPostFull(post)) {
+      addToast('이미 모집완료 되었습니다.', 'error')
+      return
+    }
+    
     try {
       const postId = myPosts[postIndex]?.postId || (postIndex + 1)
       const result = await manageApplicant(postId, applicantId, 'ACCEPT')
@@ -332,19 +343,16 @@ function MyPostsContentComponent() {
         ) || []
       }))
 
-      setMyPosts(prev => prev.map((post, index) => {
-        if (index === postIndex) {
-          const newCurrentPeople = post.currentPeople + 1
-          const newStatus = newCurrentPeople >= post.maxPeople ? 'CLOSED' : post.status
-          return { 
-            ...post, 
-            currentPeople: newCurrentPeople,
-            status: newStatus as "OPEN" | "CLOSED"
-          }
+      setMyPosts(prev => prev.map((p, i) => {
+        if (i !== postIndex) return p
+        const newCurrent = p.currentPeople + 1
+        const reachedMax = newCurrent >= p.maxPeople
+        return {
+          ...p,
+          currentPeople: newCurrent,
+          status: reachedMax ? 'CLOSED' : p.status
         }
-        return post
       }))
-
     } catch (err) {
       addToast(err instanceof Error ? err.message : '승인에 실패했습니다.', 'error')
     }
@@ -386,6 +394,34 @@ function MyPostsContentComponent() {
       addToast(err instanceof Error ? err.message : '거절에 실패했습니다.', 'error')
     }
   }
+
+  const handleDelete = async (postId: number) => {
+    const confirmed = confirm('정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')
+    if (!confirmed) return
+
+    // 상태 백업 (실패 시 롤백용)
+    const prev = myPosts
+    setMyPosts((p) => (p ? p.filter((x) => x.postId !== postId) : p))
+
+    console.log("모집글 아이디는" + postId);
+
+    try {
+      const response = await makeAuthenticatedRequest(`${API_BASE_URL}/posts/${postId}`, { method: 'DELETE', credentials: 'include' })
+      if (!response.ok) {
+        const text = await response.text()
+        throw new Error(text || '삭제 실패')
+      }
+      // 성공 메시지 (원하면 toast로 대체)
+      alert('삭제되었습니다.')
+    } catch (err) {
+      console.error('delete error', err)
+      alert('삭제에 실패했습니다. 다시 시도해주세요.')
+      // 롤백
+      setMyPosts(prev)
+    }
+  }
+
+  
 
   if (!mounted || loading) {
     return (
@@ -442,6 +478,8 @@ function MyPostsContentComponent() {
                     className={
                       post.status === "OPEN" 
                         ? "bg-green-500 text-white" 
+                        : post.status === "CLOSED"
+                        ? "bg-red-100 text-red-700"
                         : "bg-gray-500 text-white"
                     }
                   >
@@ -455,6 +493,14 @@ function MyPostsContentComponent() {
                   >
                     <Pencil className="w-5 h-5" />
                     <span className="sr-only">수정</span>
+                  </Button>
+
+                  {/* 삭제 버튼 -> handleDelete 호출 */}
+                  <Button
+                    onClick={() => handleDelete(post.postId!)}
+                    className="px-3 py-1 rounded-md bg-red-400 text-white font-semibold hover:bg-red-500 disabled:opacity-50"
+                  >
+                    삭제
                   </Button>
                 </div>
 
@@ -527,8 +573,11 @@ function MyPostsContentComponent() {
                             <div className="flex gap-2 mt-3">
                               <Button
                                 size="sm"
-                                className="bg-green-500 hover:bg-green-600 text-white flex-1"
+                                className="bg-green-500 hover:bg-green-600 text-white flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
                                 onClick={() => handleApprove(index, applicant.userId)}
+                                disabled={
+                                applicant.status !== 'PENDING' || isPostFull(myPosts[index])
+                              }
                               >
                                 승인
                               </Button>

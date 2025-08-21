@@ -42,7 +42,7 @@ export default function ProfileEditPage() {
     message: ""
   })
 
-  const getAuthToken = () => localStorage.getItem("auth_token") || localStorage.getItem("accessToken")
+  const getAuthToken = () => sessionStorage.getItem('auth_token')
 
   const makeAuthenticatedRequest = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken()

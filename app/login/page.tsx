@@ -40,6 +40,7 @@ export default function LoginPage() {
         password: formData.password,
       })
 
+      const token = response?.data?.token; 
       if (response.data?.token && response.code === "USER201") {
         router.push("/")
       } else if (response.code === "USER404") {
@@ -63,7 +64,8 @@ export default function LoginPage() {
     console.log('kakaoToken:', kakaoToken);
     if (kakaoToken) {
       // 토큰 저장
-      localStorage.setItem("auth_token", kakaoToken)
+      sessionStorage.setItem("auth_token", kakaoToken)
+      //localStorage.setItem("auth_token", kakaoToken)
       // 메인페이지로 이동
       window.location.replace("/") // router.replace("/")도 가능, 그러나 확실히 새로고침할 땐 window.location 추천
     }
@@ -71,7 +73,7 @@ export default function LoginPage() {
 
 
   useEffect(() => {
-    const savedEmail = localStorage.getItem("rememberedEmail")
+    const savedEmail = sessionStorage.getItem("rememberedEmail")
     if (savedEmail) {
       setFormData((prev) => ({ ...prev, email: savedEmail }))
       setRememberEmail(true)
@@ -177,27 +179,39 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center space-x-3">
-              <Checkbox
-                id="keep-logged-in"
-                checked={formData.keepLoggedIn}
-                onCheckedChange={(checked) => {
-                  const keep = !!checked
-                  setFormData((prev) => ({ ...prev, keepLoggedIn: keep }))
+            {/* 로그인 상태 유지 + 오른쪽 링크 */}
+            <div className="flex items-center justify-between">
+              {/* 왼쪽: 로그인 상태 유지 */}
+              <div className="flex items-center space-x-3">
+                <Checkbox
+                  id="keep-logged-in"
+                  checked={formData.keepLoggedIn}
+                  onCheckedChange={(checked) => {
+                    const keep = !!checked
+                    setFormData((prev) => ({ ...prev, keepLoggedIn: keep }))
 
-                  if (keep) {
-                    localStorage.setItem("rememberedEmail", formData.email)
-                  } else {
-                    localStorage.removeItem("rememberedEmail")
-                    setFormData((prev) => ({ ...prev, email: "" }))
-                  }
-                }}
-                className="w-5 h-5 border-2 border-gray-300 rounded data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
-              />
-              <Label htmlFor="keep-logged-in" className="text-sm text-gray-600 cursor-pointer">
-                로그인 상태 유지
-              </Label>
+                    if (keep) {
+                      sessionStorage.setItem("rememberedEmail", formData.email)
+                    } else {
+                      sessionStorage.removeItem("rememberedEmail")
+                      setFormData((prev) => ({ ...prev, email: "" }))
+                    }
+                  }}
+                  className="w-5 h-5 border-2 border-gray-300 rounded data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                />
+                <Label htmlFor="keep-logged-in" className="text-sm text-gray-600 cursor-pointer">
+                  이메일 상태 유지
+                </Label>
+              </div>
+
+              {/* 오른쪽: 아이디/비번 찾기 링크 */}
+              <div className="flex items-center gap-4 text-sm shrink-0">
+                <Link href="/login/find-email" className="text-blue-500 hover:text-blue-600 font-semibold text-sm transition-colors">이메일 찾기</Link>
+                <span className="text-gray-300">|</span>
+                <Link href="/login/forgot-password" className="text-blue-500 hover:text-blue-600 font-semibold text-sm transition-colors">비밀번호 재설정</Link>
+              </div>
             </div>
+
 
             {/* 로그인 버튼 */}
             <Button

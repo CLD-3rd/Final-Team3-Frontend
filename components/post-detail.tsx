@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { ArrowLeft, Share2, Heart, Users, Clock, MapPin, AlertTriangle, Bell, User, Eye, CheckCircle, XCircle, Shield, Zap, Trophy, Star, X } from "lucide-react"
+import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api-client";
 
 interface PostData {
@@ -23,6 +24,15 @@ interface PostData {
   location: string
   bookmarked: boolean
   userEmail?: string 
+  weather?: {
+    date: string
+    time: string
+    weather: string
+    precipitation: string
+    tempMin: string
+    tempMax: string
+    humidity: string
+  }
 }
 
 interface MyApplication {
@@ -34,7 +44,7 @@ interface MyApplication {
   location: string
   cost: number
   status: "PENDING" | "APPROVED" | "REJECTED"
-  postStatus: "OPEN" | "CLOSED"
+  postStatus: "OPEN" | "CLOSED" | "EXPIRED"
 }
 
 interface ToastMessage {
@@ -81,11 +91,12 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
   const [isAuthor, setIsAuthor] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const router = useRouter();
 
   // 인증 토큰 가져오기 및 API 호출 함수
   const getAuthToken = () => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem("auth_token") || localStorage.getItem("accessToken")
+      return sessionStorage.getItem("auth_token") || sessionStorage.getItem("accessToken")
     }
     return null
   }
@@ -585,7 +596,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
     const statusMap: { [key: string]: string } = {
       'OPEN': '모집중',
       'CLOSED': '모집마감',
-      'FULL': '정원마감'
+      'EXPIRED': '모집만료'
     }
     return statusMap[status] || status
   }
@@ -594,7 +605,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
     const colorMap: { [key: string]: string } = {
       'OPEN': 'bg-emerald-500',
       'CLOSED': 'bg-red-500',
-      'FULL': 'bg-orange-500'
+      'EXPIRED': 'bg-gray-500'
     }
     return colorMap[status] || 'bg-gray-500'
   }
@@ -615,6 +626,24 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
       'REJECTED': 'bg-red-500'
     }
     return colorMap[status] || 'bg-gray-500'
+  }
+
+  const getWeatherIcon = (weather: string) => {
+    const weatherMap: { [key: string]: string } = {
+      '1': '☀️', // 맑음
+      '3': '⛅', // 구름많음
+      '4': '☁️'  // 흐림
+    }
+    return weatherMap[weather] || '🌤️'
+  }
+
+  const getWeatherText = (weather: string) => {
+    const weatherMap: { [key: string]: string } = {
+      '1': '맑음',
+      '3': '구름많음', 
+      '4': '흐림'
+    }
+    return weatherMap[weather] || '알 수 없음'
   }
 
   if (!isOpen) return null
@@ -747,6 +776,30 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                           <p className="text-lg font-semibold text-gray-900">{getGenderText(post.gender)}</p>
                         </div>
                       </div>
+                      {/* 날씨 - weather가 1, 3, 4 중 하나일 때만 표시 */}
+                      {post.weather && post.weather.weather && ['1', '3', '4'].includes(post.weather.weather) && (
+                        <div className="flex items-center gap-4 md:col-span-2">
+                          <div className="w-12 h-12 bg-sky-100 rounded-2xl flex items-center justify-center">
+                            <span className="text-2xl">{getWeatherIcon(post.weather.weather)}</span>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-500 font-medium">날씨</p>
+                            <div className="flex items-center gap-4">
+                              <p className="text-lg font-semibold text-gray-900">{getWeatherText(post.weather.weather)}</p>
+                              {post.weather.precipitation && post.weather.precipitation !== '-' && (
+                                <span className="text-sm text-blue-600 bg-blue-100/50 px-2 py-1 rounded-lg">
+                                  강수확률 {post.weather.precipitation}%
+                                </span>
+                              )}
+                              {post.weather.humidity && post.weather.humidity !== '-' && (
+                                <span className="text-sm text-gray-600 bg-gray-200/50 px-2 py-1 rounded-lg">
+                                  습도 {post.weather.humidity}%
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* 참가비 */}
@@ -905,7 +958,11 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                               참가 신청이 거절되었습니다
                             </div>
                           ) : (
-                            <button onClick={handleCancelApplication}>
+                            <button 
+                              onClick={handleCancelApplication}
+                              className="px-12 py-3 rounded-2xl font-bold text-lg transition-all duration-300 bg-red-400 text-white hover:bg-red-500 shadow-lg"
+
+                              >
                               참가신청 취소하기
                             </button>
                           )
@@ -946,7 +1003,7 @@ export default function EventDetailModal({ postId, isOpen, onClose, onLogin }: E
                             }
                           </span>
                         </button>
-                      </div>
+                      </div> 
                     </div>
                   </section>
                 )}
